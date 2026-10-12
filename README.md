@@ -1,5 +1,10 @@
 # dsh-unrestricted
 
+> 本仓库是 [yexi-by/dsh-unrestricted](https://github.com/yexi-by/dsh-unrestricted)
+> `v0.2.2` 的功能拆分 fork，版本为 `0.2.2-modular.1`。新增 10 个独立功能开关，
+> 全部默认开启，关闭后从实际 system prompt 移除对应正文。
+> 使用方法、用量和验证见 [MODULAR.md](./MODULAR.md)。下方保留上游说明。
+
 **简体中文** | [English](./README.en.md) | [日本語](./README.ja.md)
 
 `dsh-unrestricted` 是 DeepSeek Harness（DSH）的提示词破限插件。插件通过尝试向系统提示词（System Prompt）注入专门设计的破限规则，解除模型在代码逆向、网络安全、敏感内容创作等场景下的回答限制，让模型直接输出完整、可用的技术实现与代码方案。

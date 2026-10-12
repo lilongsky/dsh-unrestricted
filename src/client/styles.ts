@@ -5,6 +5,24 @@
  */
 
 const CSS = `
+.dsh-unrestricted-modules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dsh-unrestricted-module {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 10px;
+}
+.dsh-unrestricted-module .dsh-unrestricted-toggle { margin-bottom: 4px; }
+.dsh-unrestricted-moduleSize { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+.dsh-unrestricted-module .dsh-unrestricted-note { margin: 5px 0 0; }
+.dsh-unrestricted-usage { margin: 0; font-size: 13px; }
+@media (max-width: 600px) { .dsh-unrestricted-modules { grid-template-columns: 1fr; } }
 .dsh-unrestricted-card {
   display: block;
   width: 100%;
@@ -301,7 +319,8 @@ const CSS = `
 /** Inject the stylesheet once; the tag id doubles as the re-evaluation guard. */
 export function ensureStyles(): void {
   if (typeof document === 'undefined') return
-  if (document.querySelector('style[data-plugin="dsh-unrestricted"]') !== null) return
+  const existing = document.querySelector<HTMLStyleElement>('style[data-plugin="dsh-unrestricted"]')
+  if (existing !== null) { existing.textContent = CSS; return }
   const tag = document.createElement('style')
   tag.dataset.plugin = 'dsh-unrestricted'
   tag.textContent = CSS
