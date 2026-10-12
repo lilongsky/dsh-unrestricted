@@ -1,15 +1,15 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.2.2-modular.3",
+  "version": "0.2.2",
   "private": true,
   "description": "Independent functional prompt switches for DeepSeek Harness; compatibility defaults preserve dsh-unrestricted 0.2.2",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lilongsky/dsh-unrestricted.git"
+    "url": "https://github.com/yexi-by/dsh-unrestricted.git"
   },
-  "homepage": "https://github.com/lilongsky/dsh-unrestricted#readme",
-  "bugs": "https://github.com/lilongsky/dsh-unrestricted/issues",
+  "homepage": "https://github.com/yexi-by/dsh-unrestricted#readme",
+  "bugs": "https://github.com/yexi-by/dsh-unrestricted/issues",
   "type": "module",
   "main": "src/node.js",
   "exports": {

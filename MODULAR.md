@@ -1,11 +1,10 @@
-# 功能拆分版
+# 功能开关
 
-基于 `yexi-by/dsh-unrestricted` 的 `v0.2.2`，源提交为
-`70008e2c54541f74eedf91cc20307dcd8d823b47`。本地版本为
-`0.2.2-modular.3`，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
+功能开关基于 `v0.2.2`（`70008e2c54541f74eedf91cc20307dcd8d823b47`）
+的原版提示词拆分，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
 
 在 DSH 的「插件 → 破限模式」中保留原总开关，并增加 10 个独立功能开关。
-按用户选择，所有功能默认开启；全选正文与原版逐字相同。
+为兼容已有配置，所有功能默认开启；全选正文与原版逐字相同。
 关闭的模块正文不再进入下一次系统提示词。全部功能关闭或总开关关闭时，
 恢复原生提示词。设置通过官方 Config、Settings 和 volatile 更新机制保存到
 当前 profile 的 `cordis.patch.yml`。
@@ -56,23 +55,22 @@ Standard 的完整插件增量由 **9,579** 降至 **1,811 字符**。
 
 ## 安装与恢复
 
-使用桌面版自带 CLI，把本 fork 加入 `desktop` profile：
+使用桌面版自带 CLI，把本插件加入 `desktop` profile：
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#master --ignore-scripts
+  plugin --profile desktop add github:yexi-by/dsh-unrestricted#master --ignore-scripts
 ```
 
 也可安装已构建的本地 tarball：
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2-modular.3.tgz" --ignore-scripts
+  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2.tgz" --ignore-scripts
 ```
 
-这是一个第三方 fork。README 下方保留的上游安装命令会安装原版，
-重新安装上游 `v0.2.2` 会覆盖本版功能。源码和 tarball 可用于重新安装；
-本机部署前另保存了原插件和注册文件。
+重新安装引入功能开关前的版本会覆盖这些功能。源码和 tarball 可用于重新安装；
+部署前可备份当前插件及 profile 注册文件，以便恢复。
 
 ## 验证
 
