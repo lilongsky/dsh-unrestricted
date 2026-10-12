@@ -151,7 +151,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                       <span className="dsh-unrestricted-moduleSize">{usage?.characters ?? '—'} {t('characters')}</span>
                     </div>
                     <p className="dsh-unrestricted-note"><strong>{t('moduleMeaning')}</strong>{t(row.descriptionKey)}</p>
-                    <p className="dsh-unrestricted-note"><strong>{t('dailyRecommendation')}</strong>{t(row.recommendationKey)}</p>
+                    <p className="dsh-unrestricted-note"><strong>{t('recommendedTasks')}</strong>{t(row.recommendationKey)}</p>
                   </li>
                 )
               })}
