@@ -5,7 +5,7 @@
  * component-local state is which preview is open.
  */
 import { useEffect, useState } from 'react'
-import type { ModuleId } from '../module-config.js'
+import { MODULE_GROUPS, type ModuleId, type ModuleGroup } from '../module-config.js'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: 本体插件管理页的配置槽位。
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
@@ -30,17 +30,23 @@ const MODE_ROWS: ReadonlyArray<{
   { id: 'minimal', labelKey: 'modeMinimal', presetKey: 'presetMinimal' },
 ]
 
-const MODULE_ROWS: ReadonlyArray<{ id: ModuleId; labelKey: UnrestrictedLocaleKey; descriptionKey: UnrestrictedLocaleKey }> = [
-  { id: 'delivery', labelKey: 'moduleDelivery', descriptionKey: 'descriptionDelivery' },
-  { id: 'targets', labelKey: 'moduleTargets', descriptionKey: 'descriptionTargets' },
-  { id: 'reverseEngineering', labelKey: 'moduleReverse', descriptionKey: 'descriptionReverse' },
-  { id: 'networkSecurity', labelKey: 'moduleNetwork', descriptionKey: 'descriptionNetwork' },
-  { id: 'fiction', labelKey: 'moduleFiction', descriptionKey: 'descriptionFiction' },
-  { id: 'technicalGuides', labelKey: 'moduleGuides', descriptionKey: 'descriptionGuides' },
-  { id: 'resources', labelKey: 'moduleResources', descriptionKey: 'descriptionResources' },
-  { id: 'language', labelKey: 'moduleLanguage', descriptionKey: 'descriptionLanguage' },
-  { id: 'environment', labelKey: 'moduleEnvironment', descriptionKey: 'descriptionEnvironment' },
-  { id: 'runtimeCoordination', labelKey: 'moduleRuntime', descriptionKey: 'descriptionRuntime' },
+const MODULE_ROWS: ReadonlyArray<{ id: ModuleId; labelKey: UnrestrictedLocaleKey; descriptionKey: UnrestrictedLocaleKey; recommendationKey: UnrestrictedLocaleKey }> = [
+  { id: 'delivery', labelKey: 'moduleDelivery', descriptionKey: 'descriptionDelivery', recommendationKey: 'recommendationDelivery' },
+  { id: 'targets', labelKey: 'moduleTargets', descriptionKey: 'descriptionTargets', recommendationKey: 'recommendationTargets' },
+  { id: 'reverseEngineering', labelKey: 'moduleReverse', descriptionKey: 'descriptionReverse', recommendationKey: 'recommendationReverse' },
+  { id: 'networkSecurity', labelKey: 'moduleNetwork', descriptionKey: 'descriptionNetwork', recommendationKey: 'recommendationNetwork' },
+  { id: 'fiction', labelKey: 'moduleFiction', descriptionKey: 'descriptionFiction', recommendationKey: 'recommendationFiction' },
+  { id: 'technicalGuides', labelKey: 'moduleGuides', descriptionKey: 'descriptionGuides', recommendationKey: 'recommendationGuides' },
+  { id: 'resources', labelKey: 'moduleResources', descriptionKey: 'descriptionResources', recommendationKey: 'recommendationResources' },
+  { id: 'language', labelKey: 'moduleLanguage', descriptionKey: 'descriptionLanguage', recommendationKey: 'recommendationLanguage' },
+  { id: 'environment', labelKey: 'moduleEnvironment', descriptionKey: 'descriptionEnvironment', recommendationKey: 'recommendationEnvironment' },
+  { id: 'runtimeCoordination', labelKey: 'moduleRuntime', descriptionKey: 'descriptionRuntime', recommendationKey: 'recommendationRuntime' },
+]
+
+const GROUP_ROWS: ReadonlyArray<{ id: ModuleGroup; labelKey: UnrestrictedLocaleKey }> = [
+  { id: 'general', labelKey: 'groupGeneral' },
+  { id: 'specialized', labelKey: 'groupSpecialized' },
+  { id: 'auxiliary', labelKey: 'groupAuxiliary' },
 ]
 
 /** Locale key for one mode state. */
@@ -118,23 +124,40 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
         )}
         <h4 className="dsh-unrestricted-statusTitle">{t('modulesTitle')}</h4>
         <p className="dsh-unrestricted-note">{t('modulesNote')}</p>
-        <ul className="dsh-unrestricted-modules">
-          {MODULE_ROWS.map(row => {
-            const usage = status?.modules?.find(module => module.id === row.id)
-            return (
-              <li key={row.id} className="dsh-unrestricted-module">
-                <label className="dsh-unrestricted-toggle">
-                  <input type="checkbox" checked={view.modules[row.id]}
-                    disabled={!view.writable || view.settingsStatus !== 'ready'}
-                    onChange={event => { void props.setModule(row.id, event.target.checked) }} />
-                  <span>{t(row.labelKey)}</span>
-                </label>
-                <span className="dsh-unrestricted-moduleSize">{usage?.characters ?? '—'} {t('characters')}</span>
-                <p className="dsh-unrestricted-note">{t(row.descriptionKey)}</p>
-              </li>
-            )
-          })}
-        </ul>
+        <div className="dsh-unrestricted-actions">
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+            onClick={() => { void props.enableModules('all') }}>{t('enableAll')}</button>
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+            onClick={() => { void props.enableModules('general') }}>{t('enableGeneral')}</button>
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+            onClick={() => { void props.enableModules('auxiliary') }}>{t('enableAuxiliary')}</button>
+        </div>
+        <p className="dsh-unrestricted-note">{t('groupEnableNote')}</p>
+        {GROUP_ROWS.map(group => (
+          <section key={group.id} className="dsh-unrestricted-moduleGroup">
+            <h5 className="dsh-unrestricted-groupTitle">{t(group.labelKey)}</h5>
+            <ul className="dsh-unrestricted-modules">
+              {MODULE_ROWS.filter(row => MODULE_GROUPS[group.id].includes(row.id)).map(row => {
+                const usage = status?.modules?.find(module => module.id === row.id)
+                return (
+                  <li key={row.id} className="dsh-unrestricted-module">
+                    <div className="dsh-unrestricted-moduleHeader">
+                      <label className="dsh-unrestricted-toggle">
+                        <input type="checkbox" checked={view.modules[row.id]}
+                          disabled={!view.writable || view.settingsStatus !== 'ready'}
+                          onChange={event => { void props.setModule(row.id, event.target.checked) }} />
+                        <span>{t(row.labelKey)}</span>
+                      </label>
+                      <span className="dsh-unrestricted-moduleSize">{usage?.characters ?? '—'} {t('characters')}</span>
+                    </div>
+                    <p className="dsh-unrestricted-note"><strong>{t('moduleMeaning')}</strong>{t(row.descriptionKey)}</p>
+                    <p className="dsh-unrestricted-note"><strong>{t('dailyRecommendation')}</strong>{t(row.recommendationKey)}</p>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        ))}
         {status?.usage !== undefined && (
           <p className="dsh-unrestricted-usage">
             {t('selectedBody')} {status.usage.characters.toLocaleString()} {t('characters')}

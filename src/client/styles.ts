@@ -18,9 +18,12 @@ const CSS = `
   border-radius: 8px;
   padding: 10px;
 }
-.dsh-unrestricted-module .dsh-unrestricted-toggle { margin-bottom: 4px; }
+.dsh-unrestricted-moduleHeader { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.dsh-unrestricted-moduleGroup { display: flex; flex-direction: column; gap: 8px; }
+.dsh-unrestricted-groupTitle { margin: 0; font-size: 13px; line-height: 18px; }
 .dsh-unrestricted-moduleSize { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 .dsh-unrestricted-module .dsh-unrestricted-note { margin: 5px 0 0; }
+.dsh-unrestricted-module .dsh-unrestricted-note strong { color: var(--dsw-alias-label-secondary); font-weight: 600; }
 .dsh-unrestricted-usage { margin: 0; font-size: 13px; }
 @media (max-width: 600px) { .dsh-unrestricted-modules { grid-template-columns: 1fr; } }
 .dsh-unrestricted-card {
@@ -288,6 +291,7 @@ const CSS = `
 .dsh-unrestricted-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 

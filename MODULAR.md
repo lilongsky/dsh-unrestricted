@@ -2,13 +2,27 @@
 
 基于 `yexi-by/dsh-unrestricted` 的 `v0.2.2`，源提交为
 `70008e2c54541f74eedf91cc20307dcd8d823b47`。本地版本为
-`0.2.2-modular.1`，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
+`0.2.2-modular.2`，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
 
 在 DSH 的「插件 → 破限模式」中保留原总开关，并增加 10 个独立功能开关。
 按用户选择，所有功能默认开启；全选正文与原版逐字相同。
 关闭的模块正文不再进入下一次系统提示词。全部功能关闭或总开关关闭时，
 恢复原生提示词。设置通过官方 Config、Settings 和 volatile 更新机制保存到
 当前 profile 的 `cordis.patch.yml`。
+
+开关按“通用输出、专项任务、辅助规则”分组，每项分别说明“实际要求模型做什么”
+和“日常建议”。这些开关控制额外提示词；不启用或关闭 DSH 的工具能力。
+日常可以先只开启通用交付，按任务增加其他模块。此建议依据原文作用，
+不表示每一种组合的模型效果都已验证；兼容默认仍然是全部开启。
+
+提供三个快捷按钮：
+
+- 一键开启全部：开启全部 10 个功能项。
+- 开启通用：开启通用交付、目标与输入数据。
+- 开启辅助：开启多语言一致性、环境与指令层级、运行模式协调。
+
+快捷按钮只打开对应组，保留其他模块和总开关的现有状态；一次操作通过
+官方 Settings 原子修改完成，不逐项发送配置写入。
 
 | 功能 | 配置字段 |
 | --- | --- |
@@ -52,7 +66,7 @@ Standard 的完整插件增量由 **9,579** 降至 **1,811 字符**。
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2-modular.1.tgz" --ignore-scripts
+  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2-modular.2.tgz" --ignore-scripts
 ```
 
 这是一个第三方 fork。README 下方保留的上游安装命令会安装原版，

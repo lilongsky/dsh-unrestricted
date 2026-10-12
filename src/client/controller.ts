@@ -11,7 +11,7 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: the ctx.configForms Context merge.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { MODULE_IDS, DEFAULT_MODULES, resolveModules, type ModuleId, type ModuleSettings } from '../module-config.js'
+import { MODULE_IDS, MODULE_GROUPS, DEFAULT_MODULES, resolveModules, type ModuleId, type ModuleSettings, type EnableGroup } from '../module-config.js'
 
 /** The toggle section stored in the `unrestricted` settings namespace. */
 export interface UnrestrictedSettings extends Partial<ModuleSettings> {
@@ -93,6 +93,8 @@ export interface UnrestrictedCardInjected {
   /** Persist the toggle. */
   setEnabled: (enabled: boolean) => Promise<void>
   setModule: (id: ModuleId, enabled: boolean) => Promise<void>
+  /** Open one group in a single native mutation, preserving every other choice. */
+  enableModules: (group: EnableGroup) => Promise<void>
   /** Re-run the host-side anchor checks and refresh. */
   recheck: () => Promise<void>
   /** Re-read host status. */
@@ -189,6 +191,19 @@ export function createUnrestrictedController(ctx: Context) {
   const setEnabled = (enabled: boolean) => setField('enabled', enabled)
   const setModule = (id: ModuleId, enabled: boolean) => setField(id, enabled)
 
+  async function enableModules(group: EnableGroup): Promise<void> {
+    try {
+      const ids = group === 'all' ? MODULE_IDS : MODULE_GROUPS[group]
+      const accepted = await settings.mutate(ids.map(id => ({ op: 'set', path: [id], value: true })))
+      if (!accepted) throw new Error('Module switches were not saved')
+      publish()
+      setTimeout(() => void refresh(), 300)
+    } catch (error) {
+      snapshot = { ...snapshot, message: messageOf(error) }
+      publish()
+    }
+  }
+
   async function recheck(): Promise<void> {
     try {
       const status = await call<UnrestrictedStatus>('recheck', {})
@@ -248,7 +263,7 @@ export function createUnrestrictedController(ctx: Context) {
   void refresh()
   return {
     face: (): UnrestrictedCardInjected => ({
-      hooks: { view }, setEnabled, setModule, recheck, refresh, loadPreview,
+      hooks: { view }, setEnabled, setModule, enableModules, recheck, refresh, loadPreview,
     }),
   }
 }

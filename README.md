@@ -1,8 +1,9 @@
 # dsh-unrestricted
 
 > 本仓库是 [yexi-by/dsh-unrestricted](https://github.com/yexi-by/dsh-unrestricted)
-> `v0.2.2` 的功能拆分 fork，版本为 `0.2.2-modular.1`。新增 10 个独立功能开关，
+> `v0.2.2` 的功能拆分 fork，版本为 `0.2.2-modular.2`。新增 10 个独立功能开关，
 > 全部默认开启，关闭后从实际 system prompt 移除对应正文。
+> 每项说明实际作用及日常建议；“开启全部 / 开启通用 / 开启辅助”保留其他已有选择。
 > 使用方法、用量和验证见 [MODULAR.md](./MODULAR.md)。下方保留上游说明。
 
 **简体中文** | [English](./README.en.md) | [日本語](./README.ja.md)

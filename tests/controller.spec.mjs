@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createUnrestrictedController } from '../src/client/controller.ts'
-import { DEFAULT_MODULES } from '../src/module-config.js'
+import { DEFAULT_MODULES, MODULE_IDS, NO_MODULES } from '../src/module-config.js'
 
-function controllerFixture() {
-  let value = { enabled: true, ...DEFAULT_MODULES }
+function controllerFixture(initial = {}, acceptMutation = true) {
+  let value = { enabled: true, ...DEFAULT_MODULES, ...initial }
   let resolvePreview
   const subscribers = new Set()
   const writes = []
+  const mutations = []
   const form = {
     getSnapshot: () => ({ status: 'ready', writable: true, value }),
     subscribe: listener => { subscribers.add(listener); return () => subscribers.delete(listener) },
@@ -15,6 +16,18 @@ function controllerFixture() {
       writes.push({ field, next })
       value = { ...value, [field]: next }
       for (const listener of subscribers) listener()
+      return true
+    },
+    mutate: async ops => {
+      mutations.push(structuredClone(ops))
+      if (!acceptMutation) return false
+      for (const op of ops) {
+        assert.equal(op.op, 'set')
+        assert.equal(op.path.length, 1)
+        value = { ...value, [op.path[0]]: op.value }
+      }
+      for (const listener of subscribers) listener()
+      return true
     },
   }
   const connection = { rpc: { call: async (_channel, endpoint) => {
@@ -29,7 +42,7 @@ function controllerFixture() {
     effect: fn => fn(),
   }
   return {
-    face: createUnrestrictedController(ctx).face(), writes,
+    face: createUnrestrictedController(ctx).face(), writes, mutations,
     finishPreview: () => resolvePreview({ ok: true, value: { available: true, text: 'stale preview' } }),
   }
 }
@@ -55,4 +68,35 @@ test('a preview started before a module change cannot restore stale text after t
   finishPreview()
   await pending
   assert.equal(face.hooks.view.getSnapshot().previews.standard, undefined)
+})
+
+for (const [group, expected] of [
+  ['general', ['delivery', 'targets']],
+  ['auxiliary', ['language', 'environment', 'runtimeCoordination']],
+  ['all', [...MODULE_IDS]],
+]) {
+  test(`${group} shortcut enables its requested modules atomically and preserves other choices`, async () => {
+    const before = { ...NO_MODULES, resources: true }
+    const { face, writes, mutations } = controllerFixture({ ...before, enabled: false })
+    await face.refresh()
+    await face.enableModules(group)
+    assert.equal(mutations.length, 1, 'one user action must produce one native mutation')
+    assert.equal(writes.length, 0, 'batch action must not issue scalar writes')
+    assert.deepEqual(mutations[0].map(op => op.path[0]), expected)
+    const view = face.hooks.view.getSnapshot()
+    for (const id of MODULE_IDS) {
+      assert.equal(view.modules[id], expected.includes(id) ? true : before[id], `unexpected change to ${id}`)
+    }
+    assert.equal(view.enabled, false, 'master switch must preserve its existing state')
+  })
+}
+
+test('a refused native group mutation retains the current choices and reports the failure', async () => {
+  const { face } = controllerFixture({ ...NO_MODULES, enabled: false }, false)
+  await face.refresh()
+  await face.enableModules('all')
+  const view = face.hooks.view.getSnapshot()
+  assert.deepEqual(view.modules, NO_MODULES)
+  assert.equal(view.enabled, false)
+  assert.match(view.message, /not saved/)
 })
