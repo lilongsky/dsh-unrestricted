@@ -309,6 +309,35 @@ const CSS = `
   outline-offset: 2px;
 }
 
+.dsh-unrestricted-helpActions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.dsh-unrestricted-helpAction {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.dsh-unrestricted-actionHelp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dsh-unrestricted-actionHelp strong {
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .dsh-unrestricted-helpAction { grid-template-columns: 1fr; gap: 6px; }
+  .dsh-unrestricted-helpAction button { justify-self: start; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dsh-unrestricted-summary::after { transition: none; }
 }

@@ -218,9 +218,23 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
         </ul>
         <p className="dsh-unrestricted-note">{t('subagentNote')}</p>
         <p className="dsh-unrestricted-note">{t('scopeNote')}</p>
-        <div className="dsh-unrestricted-actions">
-          <button type="button" onClick={() => { void props.recheck() }}>{t('recheck')}</button>
-          <button type="button" onClick={() => { void props.refresh() }}>{t('refresh')}</button>
+        <div className="dsh-unrestricted-actions dsh-unrestricted-helpActions">
+          <div className="dsh-unrestricted-helpAction">
+            <button type="button" aria-describedby="dsh-unrestricted-recheck-help"
+              onClick={() => { void props.recheck() }}>{t('recheck')}</button>
+            <div id="dsh-unrestricted-recheck-help" className="dsh-unrestricted-actionHelp">
+              <p className="dsh-unrestricted-note"><strong>{t('actionPurpose')}</strong>{t('recheckPurpose')}</p>
+              <p className="dsh-unrestricted-note"><strong>{t('actionWhen')}</strong>{t('recheckWhen')}</p>
+            </div>
+          </div>
+          <div className="dsh-unrestricted-helpAction">
+            <button type="button" aria-describedby="dsh-unrestricted-refresh-help"
+              onClick={() => { void props.refresh() }}>{t('refresh')}</button>
+            <div id="dsh-unrestricted-refresh-help" className="dsh-unrestricted-actionHelp">
+              <p className="dsh-unrestricted-note"><strong>{t('actionPurpose')}</strong>{t('refreshPurpose')}</p>
+              <p className="dsh-unrestricted-note"><strong>{t('actionWhen')}</strong>{t('refreshWhen')}</p>
+            </div>
+          </div>
         </div>
       </div>
     </details>
