@@ -12,6 +12,11 @@
  * - minimal works for sessions created before AND after the toggle
  * - toggling back off restores the original prompt everywhere
  * - enabling in the initial profile waits for preset registration before fusion
+ * - native settings switch English/Chinese bodies without mixing them, while
+ *   preserving the original mode protocols and measuring each complete increment
+ * - Chinese with no modules or an empty fiction slot restores the original
+ * - editing the isolated installation's fiction slot takes effect after a
+ *   native settings rebuild and is restored before the check ends
  *
  * Usage:
  *   node tools/verify-installed.mjs --runtime <path/to/installed/dsh> [--boot-enabled]
@@ -122,7 +127,9 @@ const ctx = await appBoot.boot('dsh-test', rootConfig, [...bundlePatches, ...ove
 })
 
 let failures = 0
+let checks = 0
 function check(label, condition, detail = '') {
+  checks++
   if (condition) console.log(`  ok ${label}`)
   else {
     failures++
@@ -154,6 +161,7 @@ async function assemblePrompt(agent) {
     tools: JSON.stringify(assembly.tools),
     contexts: JSON.stringify(assembly.contexts),
     sections: assembly.sections.map(section => section.name),
+    sectionTexts: Object.fromEntries(assembly.sections.map(section => [section.name, section.text])),
   }
 }
 
@@ -168,7 +176,7 @@ async function setEnabled(enabled) {
  * @param presetId - preset id to preview.
  * @returns the rendered preview text.
  */
-async function preview(presetId) {
+async function preview(presetId, modules = ALL_MODULES, promptLanguage = 'en') {
   const { createScope } = await importPackage('packages/core/scope')
   const key = {}
   const scope = createScope(ctx, key)
@@ -180,8 +188,8 @@ async function preview(presetId) {
     await scope.dispose()
   }
   const fused = presetId === 'minimal'
-    ? { sections: [{ name: 'deployment:persona-prefix', text: rules.fusedMinimalPrompt() }] }
-    : rules.fuseSections(assembly.sections, presetId)
+    ? { sections: [{ name: 'deployment:persona-prefix', text: rules.fusedMinimalPrompt(modules, promptLanguage) }] }
+    : rules.fuseSections(assembly.sections, presetId, { modules, promptLanguage })
   if (fused.issues !== undefined) throw new Error(`preview issues: ${fused.issues.join('; ')}`)
   return rules.renderPreview({ ...assembly, sections: fused.sections }, renderPrompt)
 }
@@ -385,13 +393,149 @@ try {
       return true
     })
   }
-  if (process.argv.includes('--report')) {
-    await writeFile(resolve(arg('report')), JSON.stringify({
-      evidence: 'real installed DSH 0.2.0-rc.2 components with an isolated DSH_HOME; no model request',
-      fullBodyCharacters: rules.EXECUTION_MODE_BLOCK.length, leanBodyCharacters: leanBlock.length,
-      moduleSwitches: MODULE_IDS.length, failures, sizes,
-    }, null, 2) + '\n')
+  console.log('native settings: English -> Chinese -> English')
+  const modes = ['standard', 'ptc', 'cordis', 'minimal']
+  const languageSizes = {}
+  const languageTransitions = []
+
+  function nativeSectionsRetained(id, prompt, modules, promptLanguage) {
+    const additions = rules.contractAdditions(id, modules, promptLanguage)
+    return Object.entries(baseline[id].sectionTexts).every(([name, original]) => {
+      let expected = original
+      if (name === 'deployment:persona-prefix') {
+        expected += additions.pointer
+        if (id === 'minimal' && additions.block) expected += '\n\n' + additions.block
+      } else if (name === 'plan:policy' && original.trim()) {
+        expected += additions.planNote
+      } else if (name === 'tools:ptc-only') {
+        expected += additions.ptcNote
+      } else if (name === 'tool:structured_output' && original.trim()) {
+        expected += additions.structuredNote
+      }
+      return prompt.sectionTexts[name] === expected
+    })
   }
+
+  async function verifyLanguage(promptLanguage, transition) {
+    await ctx.settings.update('unrestricted', { ...ALL_MODULES, promptLanguage })
+    const expectedBlock = executionModeBlock(ALL_MODULES, promptLanguage)
+    const otherBlock = executionModeBlock(ALL_MODULES, promptLanguage === 'zh' ? 'en' : 'zh')
+    const modeSizes = {}
+    for (const id of modes) {
+      const prompt = await until(`${transition}/${id} selected language`, async () => {
+        const candidate = await assemblePrompt(await presetAgent(id))
+        return candidate.text.includes(expectedBlock) && !candidate.text.includes(otherBlock)
+          ? candidate : false
+      })
+      check(`${transition}/${id} contains one complete selected body`, prompt.text.split(expectedBlock).length === 2)
+      check(`${transition}/${id} excludes the other language body`, !prompt.text.includes(otherBlock))
+      check(`${transition}/${id} preserves native section contents and protocols`, nativeSectionsRetained(id, prompt, ALL_MODULES, promptLanguage))
+      check(`${transition}/${id} tools unchanged`, prompt.tools === baseline[id].tools)
+      check(`${transition}/${id} contexts unchanged`, prompt.contexts === baseline[id].contexts)
+      const previewText = await preview(id, ALL_MODULES, promptLanguage)
+      check(`${transition}/${id} preview contains the selected body only`, previewText.includes(expectedBlock) && !previewText.includes(otherBlock))
+      modeSizes[id] = {
+        originalCharacters: baseline[id].text.length,
+        fullCharacters: prompt.text.length,
+        fullPluginCharacters: prompt.text.length - baseline[id].text.length,
+        fullPluginBytes: Buffer.byteLength(prompt.text, 'utf8') - Buffer.byteLength(baseline[id].text, 'utf8'),
+      }
+    }
+    if (languageSizes[promptLanguage]) {
+      check(`${transition} restores the same English character increments`, JSON.stringify(modeSizes) === JSON.stringify(languageSizes[promptLanguage].modes))
+    } else {
+      languageSizes[promptLanguage] = {
+        fullBodyCharacters: expectedBlock.length,
+        fullBodyBytes: Buffer.byteLength(expectedBlock, 'utf8'),
+        fictionSlotEmpty: promptLanguage === 'zh',
+        modes: modeSizes,
+      }
+    }
+    languageTransitions.push({ transition, promptLanguage, modes: modes.length })
+  }
+
+  await verifyLanguage('en', 'initial English')
+  await verifyLanguage('zh', 'switch to Chinese')
+  const zhBlock = executionModeBlock(ALL_MODULES, 'zh')
+  const zhPlanAdditions = rules.contractAdditions('standard', ALL_MODULES, 'zh')
+  planAgent.session.append('plan/mode', { active: true })
+  const zhPlan = await until('Chinese plan notes', async () => {
+    const candidate = await assemblePrompt(planAgent)
+    return candidate.text.includes(zhBlock) && candidate.text.includes(zhPlanAdditions.planNote)
+      ? candidate : false
+  })
+  check('Chinese plan keeps the original plan policy prefix', zhPlan.sectionTexts['plan:policy'].startsWith(rules.ANCHORS.planPrefix))
+  check('Chinese plan appends only the selected language note', !zhPlan.text.includes(rules.contractAdditions('standard').planNote))
+  check('Chinese plan tools unchanged', zhPlan.tools === baseline.standard.tools)
+  planAgent.session.append('plan/mode', { active: false })
+  const zhChild = await parent.ctx.agents.create({
+    sessionId: SessionId('verify-zh-subagent'), meta: childSessionMeta(parent, 1, false),
+    agentOptions: AGENT_OPTIONS, setup: agentCtx => { applyChildComposition(agentCtx, parent, {}) },
+  })
+  try {
+    const prompt = await assemblePrompt(zhChild.agent)
+    check('Chinese delegated child inherits selected language only', prompt.text.includes(zhBlock) && !prompt.text.includes(rules.EXECUTION_MODE_BLOCK))
+    check('Chinese delegated child keeps native persona anchor', prompt.text.includes('You are a coding agent powered by the'))
+    check('Chinese delegated child tools unchanged', prompt.tools === baseline.standard.tools)
+  } finally { await zhChild.dispose() }
+  await verifyLanguage('en', 'switch back to English')
+
+  async function verifyOriginal(label) {
+    for (const id of modes) {
+      const prompt = await until(`${label}/${id} original prompt`, async () => {
+        const candidate = await assemblePrompt(await presetAgent(id))
+        return candidate.text === baseline[id].text ? candidate : false
+      })
+      check(`${label}/${id} restores original bytes`, true)
+      check(`${label}/${id} tools unchanged`, prompt.tools === baseline[id].tools)
+      check(`${label}/${id} contexts unchanged`, prompt.contexts === baseline[id].contexts)
+    }
+  }
+
+  console.log('native settings: Chinese empty configurations')
+  await ctx.settings.update('unrestricted', { ...NO_MODULES, promptLanguage: 'zh' })
+  check('Chinese all modules off has no added body', executionModeBlock(NO_MODULES, 'zh') === '')
+  await verifyOriginal('Chinese all modules off')
+  const fictionOnly = { ...NO_MODULES, fiction: true }
+  await ctx.settings.update('unrestricted', fictionOnly)
+  check('Chinese empty fiction alone has no added body', executionModeBlock(fictionOnly, 'zh') === '')
+  await verifyOriginal('Chinese empty fiction only')
+
+  console.log('isolated installation: custom Chinese fiction slot')
+  const fictionPath = join(pluginInstall, 'src/prompts/zh-fiction.txt')
+  const originalFiction = await readFile(fictionPath, 'utf8')
+  const installedPrompts = await import(pathToFileURL(join(pluginInstall, 'src/prompt-modules.js')).href)
+  const customFiction = '自定义中文创作验收：描写成年角色整理书房的温和场景，保留人物设定、对白和叙事视角。'
+  check('the installed Chinese fiction slot starts blank', originalFiction.trim() === '')
+  async function rebuildFromNativeSettings() {
+    await setEnabled(false)
+    await until('minimal native settings rebuild', async () =>
+      (await assemblePrompt(await presetAgent('minimal'))).text === baseline.minimal.text)
+    await setEnabled(true)
+  }
+  try {
+    await writeFile(fictionPath, customFiction + '\n')
+    await rebuildFromNativeSettings()
+    const customBlock = installedPrompts.executionModeBlock(fictionOnly, 'zh')
+    check('isolated installed fiction is read from the editable file', customBlock.includes(customFiction))
+    for (const id of modes) {
+      const prompt = await until(`custom fiction/${id} update`, async () => {
+        const candidate = await assemblePrompt(await presetAgent(id))
+        return candidate.text.includes(customBlock) ? candidate : false
+      })
+      check(`custom fiction/${id} contains the local text exactly once`, prompt.text.split(customFiction).length === 2)
+      check(`custom fiction/${id} excludes the English full body`, !prompt.text.includes(rules.EXECUTION_MODE_BLOCK))
+      check(`custom fiction/${id} tools unchanged`, prompt.tools === baseline[id].tools)
+      check(`custom fiction/${id} contexts unchanged`, prompt.contexts === baseline[id].contexts)
+    }
+  } finally {
+    await writeFile(fictionPath, originalFiction)
+  }
+  await rebuildFromNativeSettings()
+  check('the isolated fiction file is restored to its original blank bytes', await readFile(fictionPath, 'utf8') === originalFiction)
+  check('the restored isolated fiction adds no body', installedPrompts.executionModeBlock(fictionOnly, 'zh') === '')
+  await verifyOriginal('Chinese fiction restored blank')
+  await ctx.settings.update('unrestricted', { ...ALL_MODULES, promptLanguage: 'en' })
 
   console.log('toggle off')
   await setEnabled(false)
@@ -402,6 +546,19 @@ try {
     })
     check(`${id} restored to original`, off.text === baseline[id].text)
     check(`${id} tools still unchanged`, off.tools === baseline[id].tools)
+  }
+  if (process.argv.includes('--report')) {
+    await writeFile(resolve(arg('report')), JSON.stringify({
+      evidence: 'real installed DSH 0.2.0-rc.2 components with an isolated DSH_HOME; no model request; no desktop profile changes',
+      fullBodyCharacters: rules.EXECUTION_MODE_BLOCK.length, leanBodyCharacters: leanBlock.length,
+      moduleSwitches: MODULE_IDS.length, checks, failures, sizes,
+      languages: languageSizes, nativeLanguageTransitions: languageTransitions,
+      chineseAllModulesOffRestoresNative: true,
+      chineseEmptyFictionRestoresNative: true,
+      isolatedCustomFiction: { appliedInAllModes: true, restoredToBlank: originalFiction.trim() === '', sampleCharacters: customFiction.length },
+      limits: ['Prompt assembly and settings persistence were exercised without a provider request; model behavior and token usage were not evaluated.',
+        'Chinese full-body totals exclude the empty fiction slot, while the preserved English original includes that module.'],
+    }, null, 2) + '\n')
   }
 } finally {
   for (const handle of agents.values()) await handle.dispose()

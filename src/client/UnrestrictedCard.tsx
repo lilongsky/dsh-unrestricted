@@ -5,7 +5,7 @@
  * component-local state is which preview is open.
  */
 import { useEffect, useState } from 'react'
-import { MODULE_GROUPS, type ModuleId, type ModuleGroup } from '../module-config.js'
+import { MODULE_GROUPS, type ModuleId, type ModuleGroup, type PromptLanguage } from '../module-config.js'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: 本体插件管理页的配置槽位。
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
@@ -117,6 +117,15 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
           />
           <span>{t('toggle')}</span>
         </label>
+        <label className="dsh-unrestricted-promptLanguage">
+          <span>{t('promptLanguage')}</span>
+          <select value={view.promptLanguage} disabled={!view.writable || view.settingsStatus !== 'ready'}
+            onChange={event => { void props.setPromptLanguage(event.target.value as PromptLanguage) }}>
+            <option value="en">{t('promptLanguageEn')}</option>
+            <option value="zh">{t('promptLanguageZh')}</option>
+          </select>
+        </label>
+        <p className="dsh-unrestricted-note">{t('promptLanguageNote')}</p>
         {view.settingsStatus === 'unavailable' && (
           <p className="dsh-unrestricted-note">{t('settingsUnavailable')}</p>
         )}
@@ -151,8 +160,9 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                       </label>
                       <span className="dsh-unrestricted-moduleSize">{usage?.characters ?? '—'} {t('characters')}</span>
                     </div>
-                    <p className="dsh-unrestricted-note"><strong>{t('moduleMeaning')}</strong>{t(row.descriptionKey)}</p>
+                    <p className="dsh-unrestricted-note"><strong>{t('moduleMeaning')}</strong>{t(row.id === 'fiction' && view.promptLanguage === 'zh' ? 'descriptionFictionZh' : row.descriptionKey)}</p>
                     <p className="dsh-unrestricted-note"><strong>{t('recommendedTasks')}</strong>{t(row.recommendationKey)}</p>
+                    {row.id === 'fiction' && view.promptLanguage === 'zh' && <p className="dsh-unrestricted-note">{t('fictionSlotNote')}</p>}
                   </li>
                 )
               })}

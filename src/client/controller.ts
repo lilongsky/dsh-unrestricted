@@ -11,11 +11,12 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: the ctx.configForms Context merge.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { MODULE_IDS, MODULE_GROUPS, DEFAULT_MODULES, resolveModules, type ModuleId, type ModuleSettings, type EnableGroup } from '../module-config.js'
+import { MODULE_IDS, MODULE_GROUPS, DEFAULT_MODULES, resolveModules, resolvePromptLanguage, type ModuleId, type ModuleSettings, type EnableGroup, type PromptLanguage } from '../module-config.js'
 
 /** The toggle section stored in the `unrestricted` settings namespace. */
 export interface UnrestrictedSettings extends Partial<ModuleSettings> {
   enabled?: boolean
+  promptLanguage?: PromptLanguage
 }
 
 /** Per-preset fusion state reported by the host half. */
@@ -27,6 +28,7 @@ export interface UnrestrictedModeState {
 /** Host status endpoint payload. */
 export interface UnrestrictedStatus {
   enabled: boolean
+  promptLanguage: PromptLanguage
   modes: Record<string, UnrestrictedModeState>
   modules: Array<{ id: ModuleId; enabled: boolean; characters: number; bytes: number }>
   usage: { characters: number; bytes: number; fullCharacters: number; savedCharacters: number }
@@ -60,6 +62,7 @@ export interface UnrestrictedViewSnapshot {
   /** Persisted toggle; undefined until the settings scope first syncs. */
   enabled: boolean
   modules: ModuleSettings
+  promptLanguage: PromptLanguage
   /** Whether the Host document accepts writes. */
   writable: boolean
   /** Settings scope sync state. */
@@ -90,6 +93,7 @@ export interface UnrestrictedCardInjected {
   /** Persist the toggle. */
   setEnabled: (enabled: boolean) => Promise<void>
   setModule: (id: ModuleId, enabled: boolean) => Promise<void>
+  setPromptLanguage: (language: PromptLanguage) => Promise<void>
   /** Open one group in a single native mutation, preserving every other choice. */
   enableModules: (group: EnableGroup) => Promise<void>
   /** Re-run the host-side anchor checks and refresh. */
@@ -120,6 +124,7 @@ export function createUnrestrictedController(ctx: Context) {
   let snapshot: UnrestrictedViewSnapshot = {
     enabled: false,
     modules: { ...DEFAULT_MODULES },
+    promptLanguage: 'en',
     writable: false,
     settingsStatus: 'loading',
     status: null,
@@ -140,11 +145,13 @@ export function createUnrestrictedController(ctx: Context) {
     const settingsSnapshot = settings.getSnapshot()
     const enabled = settingsSnapshot.value?.enabled === true
     const modules = resolveModules(settingsSnapshot.value)
-    const changed = enabled !== snapshot.enabled || MODULE_IDS.some(id => modules[id] !== snapshot.modules[id])
+    const promptLanguage = resolvePromptLanguage(settingsSnapshot.value)
+    const changed = enabled !== snapshot.enabled || promptLanguage !== snapshot.promptLanguage || MODULE_IDS.some(id => modules[id] !== snapshot.modules[id])
     if (changed) previewGeneration++
     snapshot = {
       enabled,
       modules,
+      promptLanguage,
       writable: settingsSnapshot.writable,
       settingsStatus: settingsSnapshot.status,
       status: snapshot.status,
@@ -172,9 +179,9 @@ export function createUnrestrictedController(ctx: Context) {
     }
   }
 
-  async function setField(field: 'enabled' | ModuleId, enabled: boolean): Promise<void> {
+  async function setField(field: 'enabled' | ModuleId | 'promptLanguage', value: boolean | PromptLanguage): Promise<void> {
     try {
-      await settings.set(field, enabled)
+      await settings.set(field, value)
       publish()
       // Give the host volatile watcher one turn before reading its derived state.
       setTimeout(() => void refresh(), 300)
@@ -186,6 +193,7 @@ export function createUnrestrictedController(ctx: Context) {
 
   const setEnabled = (enabled: boolean) => setField('enabled', enabled)
   const setModule = (id: ModuleId, enabled: boolean) => setField(id, enabled)
+  const setPromptLanguage = (language: PromptLanguage) => setField('promptLanguage', language)
 
   async function enableModules(group: EnableGroup): Promise<void> {
     try {
@@ -259,7 +267,7 @@ export function createUnrestrictedController(ctx: Context) {
   void refresh()
   return {
     face: (): UnrestrictedCardInjected => ({
-      hooks: { view }, setEnabled, setModule, enableModules, recheck, refresh, loadPreview,
+      hooks: { view }, setEnabled, setModule, setPromptLanguage, enableModules, recheck, refresh, loadPreview,
     }),
   }
 }

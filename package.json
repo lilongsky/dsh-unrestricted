@@ -1,6 +1,6 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.2.2-modular.5",
+  "version": "0.2.2-zhtrial.1",
   "private": true,
   "description": "Independent functional prompt switches for DeepSeek Harness; compatibility defaults preserve dsh-unrestricted 0.2.2",
   "license": "MIT",
@@ -29,7 +29,8 @@
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "locale",
-    "MODULAR.md"
+    "MODULAR.md",
+    "ZH_TRIAL.md"
   ],
   "dsh": {
     "bundle": {

@@ -31,7 +31,7 @@ import { createScope } from '@deepseek-ai/dsh-scope'
 import {
   PRESETS, PRESET_RULES, fuseSections, fusedMinimalPrompt, renderPreview,
 } from './rules.js'
-import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, resolveModules } from './module-config.js'
+import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, resolveModules, resolvePromptLanguage } from './module-config.js'
 import { executionModeBlock, moduleUsage } from './prompt-modules.js'
 
 /** Cordis plugin name used by Loader diagnostics. */
@@ -44,8 +44,9 @@ const RPC_CHANNEL = '/dsh-unrestricted'
 
 export const Config = z.object({
   enabled: z.boolean().default(false),
+  promptLanguage: z.union(['en', 'zh']).default('en'),
   ...Object.fromEntries(MODULE_IDS.map(id => [id, z.boolean().default(DEFAULT_MODULES[id])])),
-}).default({ enabled: false, ...DEFAULT_MODULES }).volatile()
+}).default({ enabled: false, promptLanguage: 'en', ...DEFAULT_MODULES }).volatile()
 
 /** Human-readable error text for status and RPC error branches. */
 function messageOf(error) {
@@ -67,6 +68,7 @@ export function apply(ctx, config) {
   const state = {
     enabled: config.get().enabled,
     modules: resolveModules(config.get()),
+    promptLanguage: resolvePromptLanguage(config.get()),
     /** presetId -> issue strings; a preset with an empty list is verified. */
     startup: new Map(),
     /** presetId -> in-flight startup check. */
@@ -112,14 +114,14 @@ export function apply(ctx, config) {
       const issues = []
       try {
         const assembly = await presetAssembly(presetId)
-        const fused = fuseSections(assembly.sections, presetId, { modules: ALL_MODULES })
+        const fused = fuseSections(assembly.sections, presetId, { modules: ALL_MODULES, promptLanguage: state.promptLanguage })
         if (fused.issues !== undefined) issues.push(...fused.issues)
       } catch (error) {
         issues.push(`preset probe failed: ${messageOf(error)}`)
       }
       state.startup.set(presetId, issues)
       if (presetId === 'minimal') {
-        state.fusedMinimal = issues.length === 0 ? fusedMinimalPrompt(state.modules) : null
+        state.fusedMinimal = issues.length === 0 ? fusedMinimalPrompt(state.modules, state.promptLanguage) : null
       }
     })().catch((error) => {
       state.startup.set(presetId, [`preset probe failed: ${messageOf(error)}`])
@@ -145,7 +147,7 @@ export function apply(ctx, config) {
    * @param agent - the created agent (from `agent/created` or `agents.list()`).
    */
   function shadowMinimal(agent) {
-    if (!state.enabled || executionModeBlock(state.modules) === '' || state.fusedMinimal === null || state.shadows.has(agent)) return
+    if (!state.enabled || executionModeBlock(state.modules, state.promptLanguage) === '' || state.fusedMinimal === null || state.shadows.has(agent)) return
     let presetId
     try {
       presetId = ctx.agentPresets.composedPreset(agent.ctx)
@@ -191,7 +193,7 @@ export function apply(ctx, config) {
     for (const presetId of PRESETS) {
       const issues = modeIssues(presetId)
       modes[presetId] = {
-        state: !state.enabled || executionModeBlock(state.modules) === ''
+        state: !state.enabled || executionModeBlock(state.modules, state.promptLanguage) === ''
           ? 'off'
           : !state.startup.has(presetId)
             ? 'checking'
@@ -199,11 +201,11 @@ export function apply(ctx, config) {
         issues,
       }
     }
-    const block = executionModeBlock(state.modules)
-    const full = executionModeBlock(ALL_MODULES)
+    const block = executionModeBlock(state.modules, state.promptLanguage)
+    const full = executionModeBlock(ALL_MODULES, state.promptLanguage)
     return {
-      enabled: state.enabled, modes,
-      modules: moduleUsage(state.modules),
+      enabled: state.enabled, promptLanguage: state.promptLanguage, modes,
+      modules: moduleUsage(state.modules, state.promptLanguage),
       usage: {
         characters: state.enabled ? block.length : 0,
         bytes: state.enabled ? Buffer.byteLength(block, 'utf8') : 0,
@@ -271,8 +273,8 @@ export function apply(ctx, config) {
       const fused = !state.enabled
         ? { sections: assembly.sections }
         : presetId === 'minimal'
-          ? { sections: [{ name: 'deployment:persona-prefix', text: fusedMinimalPrompt(state.modules) }] }
-          : fuseSections(assembly.sections, presetId, { modules: state.modules })
+          ? { sections: [{ name: 'deployment:persona-prefix', text: fusedMinimalPrompt(state.modules, state.promptLanguage) }] }
+          : fuseSections(assembly.sections, presetId, { modules: state.modules, promptLanguage: state.promptLanguage })
       if (fused.issues !== undefined) {
         return { presetId, available: false, reason: fused.issues.join('; ') }
       }
@@ -339,7 +341,7 @@ export function apply(ctx, config) {
     }
     if (!usable(presetId)) return original
     const isSubagent = original.contexts.some(entry => entry.name === 'subagent:delegation')
-    const fused = fuseSections(original.sections, presetId, { isSubagent, modules: state.modules })
+    const fused = fuseSections(original.sections, presetId, { isSubagent, modules: state.modules, promptLanguage: state.promptLanguage })
     if (fused.issues !== undefined) {
       state.runtime.set(presetId, fused.issues)
       return original
@@ -373,12 +375,14 @@ export function apply(ctx, config) {
     const unwatch = ctx.on('loader/volatile-update', () => {
       const enabled = config.get().enabled
       const modules = resolveModules(config.get())
-      if (enabled === state.enabled && MODULE_IDS.every(id => modules[id] === state.modules[id])) return
+      const promptLanguage = resolvePromptLanguage(config.get())
+      if (enabled === state.enabled && promptLanguage === state.promptLanguage && MODULE_IDS.every(id => modules[id] === state.modules[id])) return
       clearShadows()
       state.fusedText.clear()
       state.modules = modules
+      state.promptLanguage = promptLanguage
       state.fusedMinimal = modeIssues('minimal').length === 0 && state.startup.has('minimal')
-        ? fusedMinimalPrompt(modules) : null
+        ? fusedMinimalPrompt(modules, promptLanguage) : null
       state.enabled = enabled
       if (enabled) onEnable()
       else onDisable()

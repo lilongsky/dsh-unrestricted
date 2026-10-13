@@ -58,6 +58,22 @@ test('a module switch persists its own native setting and mirrors the resulting 
   assert.equal(view.enabled, true)
 })
 
+test('language switching persists only its field and rejects the old language preview', async () => {
+  const { face, writes, finishPreview } = controllerFixture({ resources: false })
+  await face.refresh()
+  assert.equal(face.hooks.view.getSnapshot().promptLanguage, 'en')
+  const pending = face.loadPreview('standard')
+  await face.setPromptLanguage('zh')
+  finishPreview('old English preview')
+  await pending
+  const view = face.hooks.view.getSnapshot()
+  assert.deepEqual(writes, [{ field: 'promptLanguage', next: 'zh' }])
+  assert.equal(view.promptLanguage, 'zh')
+  assert.equal(view.modules.resources, false)
+  assert.equal(view.enabled, true)
+  assert.equal(view.previews.standard, undefined)
+})
+
 test('a preview started before a module change cannot restore stale text after the change', async () => {
   const { face, finishPreview } = controllerFixture()
   await face.refresh()
