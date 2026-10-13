@@ -2,7 +2,7 @@
 
 基于 `yexi-by/dsh-unrestricted` 的 `v0.2.2`，源提交为
 `70008e2c54541f74eedf91cc20307dcd8d823b47`。本地版本为
-`0.2.2-modular.4`，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
+`0.2.2-modular.5`，验证宿主为 macOS Desktop DSH `0.2.0-rc.2`。
 
 在 DSH 的「插件 → 破限模式」中保留原总开关，并增加 10 个独立功能开关。
 按用户选择，所有功能默认开启；全选正文与原版逐字相同。
@@ -73,7 +73,7 @@ Standard 的完整插件增量由 **9,579** 降至 **1,811 字符**。
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2-modular.4.tgz" --ignore-scripts
+  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.2-modular.5.tgz" --ignore-scripts
 ```
 
 这是一个第三方 fork。README 下方保留的上游安装命令会安装原版，
