@@ -27,8 +27,6 @@ export interface UnrestrictedModeState {
 /** Host status endpoint payload. */
 export interface UnrestrictedStatus {
   enabled: boolean
-  /** Fingerprint of the contract bytes the host half deploys. */
-  contract: string
   modes: Record<string, UnrestrictedModeState>
   modules: Array<{ id: ModuleId; enabled: boolean; characters: number; bytes: number }>
   usage: { characters: number; bytes: number; fullCharacters: number; savedCharacters: number }
@@ -37,7 +35,6 @@ export interface UnrestrictedStatus {
 /** Deploy preview for one preset: what switching on would actually assemble. */
 export interface UnrestrictedPreview {
   presetId: string
-  contract: string
   available: boolean
   /** `live` = bytes a live agent received; `standing` = preset scope, no agent bound. */
   source?: 'live' | 'standing'
@@ -166,9 +163,8 @@ export function createUnrestrictedController(ctx: Context) {
   async function refresh(): Promise<void> {
     try {
       const status = await call<UnrestrictedStatus>('status', {})
-      const changed = status.contract !== snapshot.status?.contract || status.enabled !== snapshot.status?.enabled
-      if (changed) previewGeneration++
-      snapshot = { ...snapshot, status, previews: changed ? {} : snapshot.previews, message: undefined }
+      previewGeneration++
+      snapshot = { ...snapshot, status, previews: {}, message: undefined }
       publish()
     } catch (error) {
       snapshot = { ...snapshot, message: messageOf(error) }
@@ -207,8 +203,8 @@ export function createUnrestrictedController(ctx: Context) {
   async function recheck(): Promise<void> {
     try {
       const status = await call<UnrestrictedStatus>('recheck', {})
-      // The recheck invalidates every cached preview: the deployed bytes may
-      // have changed under a new master.
+      // Reject previews still in flight from before the recheck.
+      previewGeneration++
       snapshot = { ...snapshot, status, previews: {}, message: undefined }
       publish()
     } catch (error) {

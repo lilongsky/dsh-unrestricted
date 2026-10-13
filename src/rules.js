@@ -9,7 +9,6 @@
  *
  * @module dsh-unrestricted/rules
  */
-import { createHash } from 'node:crypto'
 import { executionModeBlock } from './prompt-modules.js'
 import { ALL_MODULES, DEFAULT_MODULES, resolveModules } from './module-config.js'
 
@@ -64,18 +63,6 @@ export const EXECUTION_MODE_BLOCK = executionModeBlock(ALL_MODULES)
 export function fusedMinimalPrompt(modules = DEFAULT_MODULES) {
   const block = executionModeBlock(modules)
   return ANCHORS.personaMinimal + (block ? PERSONA_POINTER + '\n\n' + block : '')
-}
-
-/**
- * Contract fingerprint: the first 16 hex digits of SHA-256 over the deployed
- * contract bytes. Upstream keys its deployments on a prompt hash so a live
- * prompt can be matched against the bytes it was built from; the same identity
- * belongs on the settings card, where it distinguishes "the contract is live"
- * from "some other contract is live".
- * @returns lowercase hex digest prefix of EXECUTION_MODE_BLOCK.
- */
-export function contractFingerprint(modules = DEFAULT_MODULES) {
-  return createHash('sha256').update(executionModeBlock(modules), 'utf8').digest('hex').slice(0, 16)
 }
 
 /** The exact bytes this plugin appends for one preset (used by preview and checks). */

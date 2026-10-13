@@ -29,7 +29,7 @@ import z from '@deepseek-ai/schemastery'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import {
-  PRESETS, PRESET_RULES, contractFingerprint, fuseSections, fusedMinimalPrompt, renderPreview,
+  PRESETS, PRESET_RULES, fuseSections, fusedMinimalPrompt, renderPreview,
 } from './rules.js'
 import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, resolveModules } from './module-config.js'
 import { executionModeBlock, moduleUsage } from './prompt-modules.js'
@@ -202,7 +202,7 @@ export function apply(ctx, config) {
     const block = executionModeBlock(state.modules)
     const full = executionModeBlock(ALL_MODULES)
     return {
-      enabled: state.enabled, contract: contractFingerprint(state.modules), modes,
+      enabled: state.enabled, modes,
       modules: moduleUsage(state.modules),
       usage: {
         characters: state.enabled ? block.length : 0,
@@ -249,15 +249,14 @@ export function apply(ctx, config) {
   /**
    * Build the deploy preview for ONE preset from the same assembly path the
    * live fusion uses. This is the "look before you switch" surface: exact
-   * fused prompt text, its size, and the contract fingerprint it embeds.
+   * fused prompt text and its size.
    * Read-only — it never mutates prompt state.
    * @param presetId - preset id from the card.
    * @returns the preview payload, or a message naming why none is available.
    */
   async function previewFor(presetId) {
-    const contract = contractFingerprint(state.modules)
     if (!PRESETS.includes(presetId)) {
-      return { presetId, contract, available: false, reason: `unknown preset "${presetId}"` }
+      return { presetId, available: false, reason: `unknown preset "${presetId}"` }
     }
     // Best source first: the exact bytes a live agent just received. Only when
     // no agent has assembled this preset yet (the toggle is still off) does the
@@ -265,7 +264,7 @@ export function apply(ctx, config) {
     // sections and leaves {{model}} / {{cwd}} as literal slots.
     const cached = state.fusedText.get(presetId)
     if (cached !== undefined) {
-      return { presetId, contract, available: true, source: 'live', ...cached }
+      return { presetId, available: true, source: 'live', ...cached }
     }
     try {
       const assembly = await presetAssembly(presetId)
@@ -275,18 +274,18 @@ export function apply(ctx, config) {
           ? { sections: [{ name: 'deployment:persona-prefix', text: fusedMinimalPrompt(state.modules) }] }
           : fuseSections(assembly.sections, presetId, { modules: state.modules })
       if (fused.issues !== undefined) {
-        return { presetId, contract, available: false, reason: fused.issues.join('; ') }
+        return { presetId, available: false, reason: fused.issues.join('; ') }
       }
       const variables = { ...assembly.variables, ...previewVariables() }
       const text = renderPreview({ ...assembly, sections: fused.sections, variables }, renderPrompt)
       const originalText = renderPreview({ ...assembly, variables }, renderPrompt)
       return {
-        presetId, contract, available: true, source: 'standing', ...summarize(text),
+        presetId, available: true, source: 'standing', ...summarize(text),
         addedCharacters: text.length - originalText.length,
         addedBytes: Buffer.byteLength(text, 'utf8') - Buffer.byteLength(originalText, 'utf8'),
       }
     } catch (error) {
-      return { presetId, contract, available: false, reason: `preview probe failed: ${messageOf(error)}` }
+      return { presetId, available: false, reason: `preview probe failed: ${messageOf(error)}` }
     }
   }
 
