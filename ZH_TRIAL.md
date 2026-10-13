@@ -1,6 +1,6 @@
 # 中文提示词本地试用
 
-这是本地试用分支 `experiment/chinese-prompt-local`，未更新 fork 的 `master` 或 PR。
+这是中文提示词分支 `feature/chinese-prompts`，未更新 fork 的 `master` 或 PR。
 默认语言为英文，以保留现有配置的行为。部署到本机后可在「插件 → 破限模式 → 提示词语言」选择中文。
 
 每次请求只注入所选语言的插件正文和模式附注。DSH 原生段落、工具名称、schema、占位符和兼容性校验原文保持不变。
