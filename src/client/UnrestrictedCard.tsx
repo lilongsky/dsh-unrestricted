@@ -69,10 +69,11 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
   const view: UnrestrictedViewSnapshot = props.useView((snapshot: UnrestrictedViewSnapshot) => snapshot)
   const status = view.status
   const [openPreview, setOpenPreview] = useState<string | null>(null)
+  const activePreview = openPreview === null ? undefined : view.previews[openPreview]
 
   useEffect(() => {
-    if (openPreview !== null && view.previews[openPreview] === undefined) void props.loadPreview(openPreview)
-  }, [openPreview, status?.contract, view.enabled])
+    if (openPreview !== null && activePreview === undefined) void props.loadPreview(openPreview)
+  }, [openPreview, activePreview, props.loadPreview])
 
   const hasFailedMode = status !== null
     && Object.values(status.modes).some(mode => mode.state === 'failed')
@@ -166,6 +167,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
         )}
         <p className="dsh-unrestricted-note">{t('usageNote')}</p>
         <h4 className="dsh-unrestricted-statusTitle">{t('statusTitle')}</h4>
+        <p className="dsh-unrestricted-note">{t('previewNote')}</p>
         <ul className="dsh-unrestricted-modes">
           {MODE_ROWS.map((row) => {
             const mode = status?.modes[row.id]
@@ -214,11 +216,6 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
             )
           })}
         </ul>
-        <h4 className="dsh-unrestricted-statusTitle">{t('preflightTitle')}</h4>
-        <p className="dsh-unrestricted-note">
-          {t('fingerprint')} <code className="dsh-unrestricted-fingerprint">{status?.contract ?? '—'}</code>
-        </p>
-        <p className="dsh-unrestricted-note">{t('fingerprintNote')}</p>
         <p className="dsh-unrestricted-note">{t('subagentNote')}</p>
         <p className="dsh-unrestricted-note">{t('scopeNote')}</p>
         <div className="dsh-unrestricted-actions">

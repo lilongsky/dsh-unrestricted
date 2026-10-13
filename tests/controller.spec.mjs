@@ -5,7 +5,7 @@ import { DEFAULT_MODULES, MODULE_IDS, NO_MODULES } from '../src/module-config.js
 
 function controllerFixture(initial = {}, acceptMutation = true) {
   let value = { enabled: true, ...DEFAULT_MODULES, ...initial }
-  let resolvePreview
+  const pendingPreviews = []
   const subscribers = new Set()
   const writes = []
   const mutations = []
@@ -31,8 +31,8 @@ function controllerFixture(initial = {}, acceptMutation = true) {
     },
   }
   const connection = { rpc: { call: async (_channel, endpoint) => {
-    if (endpoint === 'status') return { ok: true, value: { enabled: value.enabled, contract: JSON.stringify(value), modes: {}, modules: [], usage: {} } }
-    if (endpoint === 'preview') return new Promise(resolve => { resolvePreview = resolve })
+    if (endpoint === 'status' || endpoint === 'recheck') return { ok: true, value: { enabled: value.enabled, modes: {}, modules: [], usage: {} } }
+    if (endpoint === 'preview') return new Promise(resolve => { pendingPreviews.push(resolve) })
     throw new Error(`unexpected endpoint: ${endpoint}`)
   } } }
   const ctx = {
@@ -43,7 +43,7 @@ function controllerFixture(initial = {}, acceptMutation = true) {
   }
   return {
     face: createUnrestrictedController(ctx).face(), writes, mutations,
-    finishPreview: () => resolvePreview({ ok: true, value: { available: true, text: 'stale preview' } }),
+    finishPreview: (text = 'stale preview', index = 0) => pendingPreviews[index]({ ok: true, value: { available: true, text } }),
   }
 }
 
@@ -67,6 +67,46 @@ test('a preview started before a module change cannot restore stale text after t
   await face.refresh()
   finishPreview()
   await pending
+  assert.equal(face.hooks.view.getSnapshot().previews.standard, undefined)
+})
+
+test('refresh discards a cached preview even when the module selection stays the same', async () => {
+  const { face, finishPreview } = controllerFixture()
+  await face.refresh()
+  const first = face.loadPreview('standard')
+  finishPreview('previous prompt')
+  await first
+  await face.refresh()
+  assert.equal(face.hooks.view.getSnapshot().previews.standard, undefined)
+  const next = face.loadPreview('standard')
+  finishPreview('updated prompt', 1)
+  await next
+  assert.equal(face.hooks.view.getSnapshot().previews.standard.preview.text, 'updated prompt')
+})
+
+for (const action of ['refresh', 'recheck']) {
+  test(`a preview from before ${action} cannot overwrite the newly loaded preview`, async () => {
+    const { face, finishPreview } = controllerFixture()
+    await face.refresh()
+    const previous = face.loadPreview('standard')
+    await face[action]()
+    const current = face.loadPreview('standard')
+    finishPreview('current prompt', 1)
+    await current
+    finishPreview('obsolete prompt', 0)
+    await previous
+    assert.equal(face.hooks.view.getSnapshot().previews.standard.preview.text, 'current prompt')
+  })
+}
+
+test('disabling the master switch discards an in-flight enabled preview', async () => {
+  const { face, finishPreview } = controllerFixture()
+  await face.refresh()
+  const pending = face.loadPreview('standard')
+  await face.setEnabled(false)
+  finishPreview()
+  await pending
+  assert.equal(face.hooks.view.getSnapshot().enabled, false)
   assert.equal(face.hooks.view.getSnapshot().previews.standard, undefined)
 })
 

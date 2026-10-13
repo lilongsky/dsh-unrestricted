@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, NO_MODULES, LEAN_MODULES } from '../src/module-config.js'
 import { executionModeBlock, MODULE_CONTENT, moduleUsage } from '../src/prompt-modules.js'
-import { ANCHORS, EXECUTION_MODE_BLOCK, fuseSections, fusedMinimalPrompt, contractFingerprint, contractAdditions } from '../src/rules.js'
+import { ANCHORS, EXECUTION_MODE_BLOCK, fuseSections, fusedMinimalPrompt, contractAdditions } from '../src/rules.js'
 
 const cases = [
   ['standard', 'standard'], ['standard-plan', 'standard'], ['ptc', 'ptc'],
@@ -76,10 +76,9 @@ test('coordination notes disappear with their switch while native plan and tool 
   }
 })
 
-test('usage and fingerprints follow the selected bytes', () => {
+test('usage follows the selected body characters', () => {
   const rows = moduleUsage(LEAN_MODULES)
   assert.equal(rows.filter(row => row.enabled).length, 1)
   assert.equal(rows.find(row => row.id === 'delivery').characters, MODULE_CONTENT.delivery.length)
-  assert.notEqual(contractFingerprint(LEAN_MODULES), contractFingerprint(ALL_MODULES))
   assert.ok(executionModeBlock(LEAN_MODULES).length < EXECUTION_MODE_BLOCK.length * 0.2)
 })

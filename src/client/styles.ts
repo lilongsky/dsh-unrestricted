@@ -216,8 +216,7 @@ const CSS = `
   color: var(--dsw-alias-label-secondary);
 }
 
-.dsh-unrestricted-presetId,
-.dsh-unrestricted-fingerprint {
+.dsh-unrestricted-presetId {
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 4px;
   padding: 1px 5px;
@@ -226,11 +225,6 @@ const CSS = `
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   line-height: 16px;
-}
-
-.dsh-unrestricted-fingerprint {
-  color: var(--dsw-alias-label-primary);
-  letter-spacing: 0.4px;
 }
 
 .dsh-unrestricted-inlineAction {
