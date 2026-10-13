@@ -162,7 +162,6 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                     </div>
                     <p className="dsh-unrestricted-note"><strong>{t('moduleMeaning')}</strong>{t(row.id === 'fiction' && view.promptLanguage === 'zh' ? 'descriptionFictionZh' : row.descriptionKey)}</p>
                     <p className="dsh-unrestricted-note"><strong>{t('recommendedTasks')}</strong>{t(row.recommendationKey)}</p>
-                    {row.id === 'fiction' && view.promptLanguage === 'zh' && <p className="dsh-unrestricted-note">{t('fictionSlotNote')}</p>}
                   </li>
                 )
               })}
