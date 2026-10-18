@@ -84,8 +84,8 @@ test('usage follows the selected body characters', () => {
   assert.ok(executionModeBlock(LEAN_MODULES).length < EXECUTION_MODE_BLOCK.length)
 })
 
-test('default modules preserve upstream 0.2.3 body bytes and fingerprint', async () => {
-  const expected = JSON.parse(await readFile(new URL('./fixtures/upstream-0.2.3.json', import.meta.url)))
+test('default modules preserve upstream 0.2.4 body bytes and fingerprint', async () => {
+  const expected = JSON.parse(await readFile(new URL('./fixtures/upstream-0.2.4.json', import.meta.url)))
   const text = executionModeBlock(ALL_MODULES)
   assert.equal(createHash('sha256').update(text, 'utf8').digest('hex'), expected.sha256)
   assert.equal(text.length, expected.characters)

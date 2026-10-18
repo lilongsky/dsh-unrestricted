@@ -12,7 +12,7 @@
  * - minimal works for sessions created before AND after the toggle
  * - toggling back off restores the original prompt everywhere
  * - enabling in the initial profile waits for preset registration before fusion
- * - selected module bodies and fingerprints match upstream 0.2.3
+ * - selected module bodies and fingerprints match upstream 0.2.4
  *
  * Usage:
  *   node tools/verify-installed.mjs --runtime <path/to/installed/dsh> [--boot-enabled]

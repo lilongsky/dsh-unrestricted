@@ -39,10 +39,10 @@ function controllerFixture(initial = {}, acceptMutation = true, options = {}) {
     assert.match(method, /^dsh-unrestricted\/(status|recheck|preview)$/)
     const endpoint = method.slice('dsh-unrestricted/'.length)
     if (endpoint === 'status' || endpoint === 'recheck') {
-      if (options.deferStatus) return new Promise(resolve => pendingStatuses.push(resolve))
+      if (options.deferStatus) return new Promise((resolve, reject) => pendingStatuses.push({ resolve, reject }))
       return { ok: true, value: { enabled: value.enabled, modes: {}, modules: [], usage: {} } }
     }
-    if (endpoint === 'preview') return new Promise(resolve => { pendingPreviews.push(resolve) })
+    if (endpoint === 'preview') return new Promise((resolve, reject) => { pendingPreviews.push({ resolve, reject }) })
     throw new Error(`unexpected endpoint: ${endpoint}`)
   } } }
   const ctx = {
@@ -53,8 +53,10 @@ function controllerFixture(initial = {}, acceptMutation = true, options = {}) {
   }
   return {
     face: createUnrestrictedController(ctx).face(), writes, mutations, calls,
-    finishStatus: (index, status) => pendingStatuses[index]({ ok: true, value: status }),
-    finishPreview: (text = 'stale preview', index = 0) => pendingPreviews[index]({ ok: true, value: { available: true, text } }),
+    finishStatus: (index, status) => pendingStatuses[index].resolve({ ok: true, value: status }),
+    failStatus: (index, error) => pendingStatuses[index].reject(error),
+    finishPreview: (text = 'stale preview', index = 0) => pendingPreviews[index].resolve({ ok: true, value: { available: true, text } }),
+    failPreview: (index, error) => pendingPreviews[index].reject(error),
   }
 }
 
@@ -194,4 +196,53 @@ test('a refused scalar setting keeps current module selection and clears the pen
   assert.equal(view.modules.resources, true)
   assert.equal(view.busy, false)
   assert.match(view.message, /not saved/)
+})
+
+test('only the latest request for one preset can replace its preview, including late failures', async () => {
+  for (const outcome of ['success', 'failure']) {
+    const { face, finishPreview, failPreview } = controllerFixture()
+    await face.refresh()
+    const older = face.loadPreview('standard')
+    const newer = face.loadPreview('standard')
+    finishPreview('current prompt', 1)
+    await newer
+    if (outcome === 'success') finishPreview('obsolete prompt', 0)
+    else failPreview(0, new Error('obsolete preview failure'))
+    await older
+    assert.equal(face.hooks.view.getSnapshot().previews.standard.status, 'ready')
+    assert.equal(face.hooks.view.getSnapshot().previews.standard.preview.text, 'current prompt')
+  }
+})
+
+test('parallel previews for different presets each retain their own response', async () => {
+  const { face, finishPreview } = controllerFixture()
+  await face.refresh()
+  const standard = face.loadPreview('standard')
+  const ptc = face.loadPreview('ptc')
+  finishPreview('ptc prompt', 1)
+  await ptc
+  finishPreview('standard prompt', 0)
+  await standard
+  const previews = face.hooks.view.getSnapshot().previews
+  assert.equal(previews.standard.preview.text, 'standard prompt')
+  assert.equal(previews.ptc.preview.text, 'ptc prompt')
+})
+
+test('an older status failure cannot replace the current status or leave an error banner', async () => {
+  const { face, finishStatus, failStatus } = controllerFixture({}, true, { deferStatus: true })
+  const initial = { enabled: true, modes: {}, modules: [], usage: {} }
+  finishStatus(0, initial)
+  await new Promise(setImmediate)
+  const older = face.refresh()
+  const newer = face.recheck()
+  const current = { ...initial, contract: 'current' }
+  finishStatus(2, current)
+  await newer
+  assert.equal(face.hooks.view.getSnapshot().busy, true)
+  failStatus(1, new Error('obsolete status failure'))
+  await older
+  const view = face.hooks.view.getSnapshot()
+  assert.equal(view.status, current)
+  assert.equal(view.message, undefined)
+  assert.equal(view.busy, false)
 })

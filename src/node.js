@@ -489,7 +489,6 @@ export function apply(ctx, config) {
 
   ctx.on('agent/disposed', ({ agent }) => {
     state.customMinimal.delete(agent)
-    state.customMinimal.delete(agent)
     unshadowMinimal(agent)
   })
 
