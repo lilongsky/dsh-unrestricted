@@ -70,7 +70,6 @@ const overrides = [
   { id: 'web-runtime', disabled: true },
   { id: 'session-telemetry-otel', disabled: true },
   { id: 'modules', disabled: true },
-  { id: 'connection', inject: ['webServer'], config: { trustedHosts: [] } },
   { id: 'open-in-app', disabled: true },
   { id: 'session-log-download', disabled: true },
   { id: 'client-hmr', disabled: true },

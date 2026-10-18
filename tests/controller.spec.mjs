@@ -32,7 +32,12 @@ function controllerFixture(initial = {}, acceptMutation = true, options = {}) {
       return true
     },
   }
-  const connection = { rpc: { call: async (_channel, endpoint) => {
+  const calls = []
+  const connection = { rpc: { call: async (channel, method) => {
+    calls.push({ channel, method })
+    assert.equal(channel, '/api')
+    assert.match(method, /^dsh-unrestricted\/(status|recheck|preview)$/)
+    const endpoint = method.slice('dsh-unrestricted/'.length)
     if (endpoint === 'status' || endpoint === 'recheck') {
       if (options.deferStatus) return new Promise(resolve => pendingStatuses.push(resolve))
       return { ok: true, value: { enabled: value.enabled, modes: {}, modules: [], usage: {} } }
@@ -47,11 +52,26 @@ function controllerFixture(initial = {}, acceptMutation = true, options = {}) {
     effect: fn => fn(),
   }
   return {
-    face: createUnrestrictedController(ctx).face(), writes, mutations,
+    face: createUnrestrictedController(ctx).face(), writes, mutations, calls,
     finishStatus: (index, status) => pendingStatuses[index]({ ok: true, value: status }),
     finishPreview: (text = 'stale preview', index = 0) => pendingPreviews[index]({ ok: true, value: { available: true, text } }),
   }
 }
+
+test('the card uses shared API endpoints for status, recheck and preview', async () => {
+  const { face, calls, finishPreview } = controllerFixture()
+  await face.refresh()
+  await face.recheck()
+  const preview = face.loadPreview('standard')
+  finishPreview('native prompt')
+  await preview
+  assert.deepEqual(calls.map(call => new URL(`${call.channel}/${call.method}`, 'dsh-app://app/').pathname), [
+    '/api/dsh-unrestricted/status',
+    '/api/dsh-unrestricted/status',
+    '/api/dsh-unrestricted/recheck',
+    '/api/dsh-unrestricted/preview',
+  ])
+})
 
 test('a module switch persists its own native setting and mirrors the resulting configuration', async () => {
   const { face, writes } = controllerFixture()

@@ -58,4 +58,19 @@ API 中 issue comments、reviews、review comments、issue events 均为空；6 
 单测验证模块关闭、原生段落保留、空选回原文、hash、并发等待及旧响应拒绝。真实宿主验证使用本机 `0.2.1-rc.2` 原生组件、
 临时 `DSH_HOME` 与临时会话；认证 RPC 通过该临时宿主 HTTP 入口执行。Minimal 结构化场景用原生子代理组合与 Tools.register，未启动 provider activation 或执行工具。
 
-无模型请求；不证明模型行为、拒答率、输出质量或服务端安全规则变化。当前未操作正式 Desktop UI、配置或会话，未推送本分支或更新 PR #6。
+上述隔离验收没有模型请求，不证明模型行为、拒答率、输出质量或服务端安全规则变化；该阶段未操作正式 Desktop UI、配置或会话。
+
+## 后续 Desktop RPC 修复（0.2.3-modular.2）
+
+授权发布后的正式桌面验收发现：卡片请求 `/dsh-unrestricted/status` 返回 HTTP 405。实际 Electron 外壳会转发非静态请求，并非只允许 `/api`；
+该响应与私有路由未命中、落到 Host 静态 fallback 的行为一致。原隔离脚本及插件 patch 都额外给 Connection provider 声明了 `webServer`，不能作为默认桌面 composition 的证明。
+
+使用当前 ASAR 导出的原生组件与临时 profile，保留官方 Connection provider 声明时，旧版私有路由未注册，返回 404；该临时宿主没有正式静态 fallback，故不把 404 写成复现了同一 405。
+即使只给消费方补 `webServer` 注入、继续调用公开 `rpc.handle`，结果仍为 404。显式传 owner 的 `connection.register` 在当前类型声明中是私有方法，生产修复不依赖它。
+
+新版只注册公开 `connection.fetch.register` 提供的三个精确 POST 路由：`/api/dsh-unrestricted/status`、`recheck`、`preview`。
+客户端通过 `connection.rpc.call('/api', 'dsh-unrestricted/<method>', payload)` 调用；使用官方 `clientRequestSchema` 校验 envelope、核对 method 并回传原 rpcId。
+共享 API carrier 继续执行原有鉴权、Host/Origin 及 owner Peer 检查。本插件不改 App 协议，不覆盖 Connection provider，不做失败回退或双路径注册。
+
+默认 Connection 的定向原生验收 11 项通过：HTTP 200、无凭据 401、异源 403、非 owner 403、四模式状态、正文指纹、重新校验、预览、桌面相对路径、非法预设与 method 不匹配。
+这些检查使用官方 Client/Host Connection 和临时会话，不发模型请求；它们区分于后续正式 Desktop 复验。非路由的既有 220 项原生证据继续适用，未重复运行。

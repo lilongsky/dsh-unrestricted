@@ -80,7 +80,6 @@ const overrides = [
   { id: 'web-runtime', disabled: true },
   { id: 'session-telemetry-otel', disabled: true },
   { id: 'modules', disabled: true },
-  { id: 'connection', inject: ['webServer'], config: { trustedHosts: [] } },
   { id: 'open-in-app', disabled: true },
   { id: 'session-log-download', disabled: true },
   { id: 'client-hmr', disabled: true },
@@ -199,7 +198,7 @@ function checkCustomMinimal(label, before, after) {
   check(`${label} keeps tools and contexts`, after.tools === before.tools && after.contexts === before.contexts)
 }
 
-/** Exercise the actual authenticated private RPC HTTP route, not a local reimplementation. */
+/** Exercise the actual authenticated shared API route, not a local reimplementation. */
 let rpcCookie
 let rpcSequence = 0
 async function hostRpc(endpoint, payload = {}) {
@@ -210,10 +209,10 @@ async function hostRpc(endpoint, payload = {}) {
     rpcCookie = response.headers.getSetCookie().map(value => value.split(';', 1)[0]).join('; ')
     if (!rpcCookie) throw new Error('RPC auth returned no temporary credential')
   }
-  const response = await fetch(origin + '/dsh-unrestricted/' + endpoint, {
+  const response = await fetch(origin + '/api/dsh-unrestricted/' + endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie: rpcCookie, origin },
-    body: JSON.stringify({ type: 'client-request', rpcId: `verify-${++rpcSequence}`, method: endpoint, payload }),
+    body: JSON.stringify({ type: 'client-request', rpcId: `verify-${++rpcSequence}`, method: `dsh-unrestricted/${endpoint}`, payload }),
   })
   if (!response.ok) throw new Error(`RPC ${endpoint} failed: HTTP ${response.status}`)
   const envelope = await response.json()

@@ -1,6 +1,6 @@
 # 功能拆分版
 
-本地兼容分支基于作者 `v0.2.3` / `e884f740e379ab71be2dfa2ce7d950a6da7194dd`，版本为 `0.2.3-modular.1`。
+本兼容分支基于作者 `v0.2.3` / `e884f740e379ab71be2dfa2ce7d950a6da7194dd`，版本为 `0.2.3-modular.2`。
 保留十个独立功能模块、三组快捷按钮和每项作用说明；默认全部开启，缺少新字段的旧配置也按开启解析。
 
 本版采用作者单份原始正文，不再提供提示词中英文选择。界面文案仍有中文和英文；界面语言不会改变注入正文。
@@ -44,6 +44,9 @@
 Minimal complete persona 随空白会话预设切换安装或释放。自定义 Minimal persona 保留调用方原文和附加系统规则，使用组装路径追加正文，不与调用方注册争用。结构化 Minimal 检查显式传入 `context.agent`，保留原生报告工具指令。
 主会话实时预览与子代理隔离；Minimal 的预览使用静态预设来源，不把预测字符串标为实时请求。
 
+卡片通过官方 Connection 的 `/api/dsh-unrestricted/status`、`recheck`、`preview` 精确 POST 路由读取宿主状态。
+Web 与桌面使用同一通道，由宿主现有鉴权与 owner Peer 检查保护；本插件不再覆盖 Connection 的依赖声明。
+
 ## 本地构建和验证
 
 ```sh
@@ -61,11 +64,11 @@ npm run build
 
 ## 安装本地包
 
-本分支尚未推送，不能用 fork 的远程 `master` 安装当前结果。审阅后可用构建出的本地 tarball：
+本版使用 PR #6 的 `feature/modular-prompt-switches` 分支；fork 的远程 `master` 不代表当前结果。可使用审阅后构建的本地 tarball：
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.3-modular.1.tgz" --ignore-scripts
+  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.3-modular.2.tgz" --ignore-scripts
 ```
 
 本轮没有执行这条正式安装命令。上游比较、PR 状态和保留模块拆分的依据见 [比较记录](./docs/upstream-0.2.3-review.md)。

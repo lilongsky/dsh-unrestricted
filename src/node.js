@@ -34,14 +34,13 @@ import {
 } from './rules.js'
 import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, resolveModules } from './module-config.js'
 import { executionModeBlock, moduleUsage } from './prompt-modules.js'
+import { apiRpcRoutes } from './rpc-routes.js'
 
 /** Cordis plugin name used by Loader diagnostics. */
 export const name = 'dsh-unrestricted'
 
 /** Base services; the agent preset registry is optional in headless/SDK hosts. */
 export const inject = ['settings', 'systemPrompt', 'loader']
-
-const RPC_CHANNEL = '/dsh-unrestricted'
 
 export const Config = z.object({
   enabled: z.boolean().default(false),
@@ -381,7 +380,7 @@ export function apply(ctx, config) {
         return ok(statusPayload())
       }
       case 'preview': {
-        // Private channels forward the client payload verbatim; accept the
+        // Connection forwards the client payload verbatim; accept the
         // `{ args }` envelope too so this handler survives a caller that
         // follows the gateway convention.
         const presetId = payload?.presetId ?? payload?.args?.presetId
@@ -514,11 +513,11 @@ export function apply(ctx, config) {
     }
   }, 'dsh-unrestricted: toggle lifecycle')
 
-  // Web 状态通道由官方 Connection 认证；headless 组合无需提供 connection 服务。
+  // Shared API routes work with both Web and shell-owned Connection carriers.
   ctx.inject(['connection'], (connectionCtx) => {
-    const disposeRpc = connectionCtx.connection.rpc.handle(RPC_CHANNEL, handleRpc)
+    const disposers = apiRpcRoutes(handleRpc).map(route => connectionCtx.connection.fetch.register(route))
     return async () => {
-      await disposeRpc()
+      for (const dispose of disposers.reverse()) await dispose()
     }
   })
 }

@@ -1,6 +1,6 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.2.3-modular.1",
+  "version": "0.2.3-modular.2",
   "private": true,
   "description": "Independent functional prompt switches for DeepSeek Harness, preserving upstream 0.2.3 prompt bytes with lifecycle and preview compatibility",
   "license": "MIT",
