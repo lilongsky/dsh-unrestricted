@@ -76,6 +76,8 @@ export function apply(ctx, config) {
     runtime: new Map(),
     /** Agent -> section disposer for minimal persona shadows. */
     shadows: new Map(),
+    /** Minimal agents whose native custom persona must stay authoritative. */
+    customMinimal: new WeakSet(),
     /** Fused minimal prompt, computed only after the minimal anchors verify. */
     fusedMinimal: null,
     /** presetId -> last successfully fused top-level assembly (the deploy preview). */
@@ -210,22 +212,31 @@ export function apply(ctx, config) {
       unshadowMinimal(agent)
       return
     }
-    if (state.shadows.has(agent)) return
-    const dispose = agent.ctx.systemPrompt.section({
-      name: 'deployment:persona-prefix',
-      order: 0,
-      complete: true,
-      text: (context) => {
-        // Preserve structured-output instructions when a structured subagent
-        // runs under minimal.
-        const hasStructured = context?.agent?.ctx?.tools
-          ?.schemas?.(context.agent)
-          ?.some(tool => tool.name === 'structured_output') === true
-        return hasStructured
-          ? fusedMinimalPrompt(state.modules, ANCHORS.structuredOutputFull)
-          : (state.fusedMinimal ?? fusedMinimalPrompt(state.modules))
-      },
-    })
+    if (state.shadows.has(agent) || state.customMinimal.has(agent)) return
+    let dispose
+    try {
+      dispose = agent.ctx.systemPrompt.section({
+        name: 'deployment:persona-prefix',
+        order: 0,
+        complete: true,
+        text: (context) => {
+          // Preserve structured-output instructions when a structured subagent
+          // runs under minimal.
+          const hasStructured = context?.agent?.ctx?.tools
+            ?.schemas?.(context.agent)
+            ?.some(tool => tool.name === 'structured_output') === true
+          return hasStructured
+            ? fusedMinimalPrompt(state.modules, ANCHORS.structuredOutputFull)
+            : (state.fusedMinimal ?? fusedMinimalPrompt(state.modules))
+        },
+      })
+    } catch (error) {
+      // Native delegated personas use this same agent layer. Leave that
+      // contribution owned by its caller; the live waterfall can fuse it.
+      if (messageOf(error) !== 'prompt section "deployment:persona-prefix" is already registered in this scope') throw error
+      state.customMinimal.add(agent)
+      return
+    }
     state.shadows.set(agent, dispose)
   }
 
@@ -323,7 +334,11 @@ export function apply(ctx, config) {
    * @returns the preview payload, or a message naming why none is available.
    */
   async function previewFor(presetId) {
-    const contract = contractFingerprint(state.modules)
+    // A Settings commit may land while the preset scope is being acquired.
+    // Keep the body and its fingerprint on the same selection.
+    const modules = state.modules
+    const enabled = state.enabled
+    const contract = contractFingerprint(modules)
     if (!PRESETS.includes(presetId)) {
       return { presetId, contract, available: false, reason: `unknown preset "${presetId}"` }
     }
@@ -337,11 +352,11 @@ export function apply(ctx, config) {
     }
     try {
       const assembly = await presetAssembly(presetId)
-      const fused = !state.enabled
+      const fused = !enabled
         ? { sections: assembly.sections }
         : presetId === 'minimal'
-          ? { sections: [{ name: 'deployment:persona-prefix', text: fusedMinimalPrompt(state.modules) }] }
-          : fuseSections(assembly.sections, presetId, { modules: state.modules })
+          ? { sections: [{ name: 'deployment:persona-prefix', text: fusedMinimalPrompt(modules) }] }
+          : fuseSections(assembly.sections, presetId, { modules })
       if (fused.issues !== undefined) {
         return { presetId, contract, available: false, reason: fused.issues.join('; ') }
       }
@@ -404,6 +419,19 @@ export function apply(ctx, config) {
       if (state.shadows.has(agent) && state.fusedMinimal !== null) {
         return original
       }
+      const persona = original.sections.find(section => section.name === 'deployment:persona-prefix')
+      if (persona !== undefined && persona.text !== ANCHORS.personaMinimal) {
+        // Preserve a caller's delegated/custom persona and other native
+        // sections instead of replacing them with the stock complete persona.
+        state.customMinimal.add(agent)
+        const fused = fuseSections(original.sections, 'minimal', { isSubagent: true, modules: state.modules })
+        if (fused.issues !== undefined) {
+          state.runtime.set('minimal', fused.issues)
+          return original
+        }
+        return { ...original, sections: fused.sections }
+      }
+      state.customMinimal.delete(agent)
       // An agent missed by the enable sweep (a request that raced the toggle)
       // registers its shadow now; the host restores that complete section
       // immediately after this waterfall.
@@ -460,6 +488,7 @@ export function apply(ctx, config) {
   })
 
   ctx.on('agent/disposed', ({ agent }) => {
+    state.customMinimal.delete(agent)
     unshadowMinimal(agent)
   })
 

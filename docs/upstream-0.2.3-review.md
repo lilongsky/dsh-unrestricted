@@ -27,6 +27,15 @@ API 中 issue comments、reviews、review comments、issue events 均为空；6 
 | Windows issue #7 恢复工具 | 未运行或移植。该脚本针对特定旧 Windows 依赖冲突，会重装上游 0.2.2 并要求退出桌面，不适用于本轮 macOS 新分支验证。 |
 | 依赖和版本声明 | 采用作者 engines 范围，开发 SDK 更新为本机对应 0.2.1-rc.2；当前实际验证范围只宣称 0.2.1-rc.2。 |
 
+## 集成候选独立复审整改
+
+独立复审用真实宿主复现了两项候选问题：
+
+- Minimal 父代理派生自定义 persona 的子代理，在同一 agent scope 注册 complete shadow 会与调用方的 persona 重名，并使异步启用回调抛错。整改后仅识别这一原生重名冲突，不取得或释放用户注册；实际组装沿调用方 persona 和其他原生段落追加模块正文，原生结构化报告指令保留。普通 Minimal 继续使用原有 complete shadow。
+- preview 在等待预设 scope 时模块选择变化，原实现会返回新正文和旧 fingerprint。整改为单次读取 modules/enabled 快照，正文和 hash 使用同一份选择；不新增 epoch 或恢复层。
+
+这两项是对本地集成候选的复现与整改；没有单独运行作者原版复现，因此不归因为作者版缺陷。
+
 ## 多语言文档与真实注入路径
 
 上游确有多语言 prompt 规则内容：

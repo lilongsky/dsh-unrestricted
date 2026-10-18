@@ -171,6 +171,34 @@ async function setEnabled(enabled) {
   await ctx.settings.update('unrestricted', { enabled })
 }
 
+async function customMinimalChild(suffix) {
+  const parent = await presetAgent('minimal')
+  const handle = await parent.ctx.agents.create({
+    sessionId: SessionId(`verify-custom-minimal-${suffix}`), meta: childSessionMeta(parent, 1, false),
+    agentOptions: AGENT_OPTIONS,
+    setup: agentCtx => {
+      applyChildComposition(agentCtx, parent, { persona: 'CUSTOM_MINIMAL_PERSONA: Preserve the delegated reviewer role.' })
+      agentCtx.systemPrompt.section({ name: 'review:custom-rule', order: 20, text: 'CUSTOM_SYSTEM_RULE: Keep the supplied review criteria.' })
+      agentCtx.tools.register({ name: 'structured_output', description: 'Report a structured review.',
+        parameters: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] },
+        output: { schema: { type: 'object', properties: {}, additionalProperties: false }, render: () => [] },
+        execute: async () => { throw new Error('Assembly-only check') } })
+      agentCtx.systemPrompt.section({ name: 'tool:structured_output',
+        order: agentCtx.systemPrompt.getSectionOrder('STRUCTURED_OUTPUT'), text: rules.ANCHORS.structuredOutputFull })
+    },
+  })
+  agents.set(`custom-minimal-${suffix}`, handle)
+  return handle.agent
+}
+
+function checkCustomMinimal(label, before, after) {
+  check(`${label} preserves the caller persona prefix`, after.sectionTexts['deployment:persona-prefix'].startsWith(before.sectionTexts['deployment:persona-prefix']))
+  check(`${label} preserves custom system rules`, after.sectionTexts['review:custom-rule'] === before.sectionTexts['review:custom-rule'])
+  check(`${label} adds the selected body once`, after.text.split(rules.EXECUTION_MODE_BLOCK).length === 2)
+  check(`${label} retains native structured-report protocol`, after.text.includes(rules.ANCHORS.structuredOutputFull))
+  check(`${label} keeps tools and contexts`, after.tools === before.tools && after.contexts === before.contexts)
+}
+
 /** Exercise the actual authenticated private RPC HTTP route, not a local reimplementation. */
 let rpcCookie
 let rpcSequence = 0
@@ -263,6 +291,9 @@ try {
   const preExisting = await presetAgent('standard', '-pre')
   check('minimal baseline is the stock persona', baseline.minimal.text === 'You are a helpful software engineer assistant.')
 
+  const customBefore = await customMinimalChild('before-enable')
+  const customBeforeNative = await assemblePrompt(customBefore)
+
   console.log('toggle on')
   await setEnabled(true)
 
@@ -283,6 +314,18 @@ try {
   const pre = await assemblePrompt(preExisting)
   check('pre-existing standard session fused on next assembly', pre.text.includes(rules.EXECUTION_MODE_BLOCK))
   check('pre-existing session tools unchanged', pre.tools === baseline.standard.tools)
+
+  console.log('native Minimal custom persona before and after enable')
+  checkCustomMinimal('pre-existing Minimal custom child', customBeforeNative, await assemblePrompt(customBefore))
+  const customAfter = await customMinimalChild('after-enable')
+  const customAfterOn = await assemblePrompt(customAfter)
+  await setEnabled(false)
+  const customAfterNative = await assemblePrompt(customAfter)
+  check('pre-existing Minimal custom child restores native bytes when disabled', (await assemblePrompt(customBefore)).text === customBeforeNative.text)
+  checkCustomMinimal('new Minimal custom child', customAfterNative, customAfterOn)
+  await setEnabled(true)
+  await hostRpc('status')
+  checkCustomMinimal('re-enabled Minimal custom child', customAfterNative, await assemblePrompt(customAfter))
 
   // Plan mode flips exactly one section.
   const planAgent = await presetAgent('standard', '-plan')
@@ -376,6 +419,34 @@ try {
   const afterRecheck = await hostRpc('preview', { presetId: 'standard' })
   check('recheck invalidates live cache and returns a standing preview', afterRecheck.available
     && afterRecheck.source === 'standing' && afterRecheck.text.includes(rules.EXECUTION_MODE_BLOCK))
+
+  console.log('preview body and fingerprint use one settings snapshot')
+  const acquire = ctx.agentPresets.acquireScope
+  let releasePreview
+  const blockedPreview = new Promise(resolve => { releasePreview = resolve })
+  let previewEntered = false
+  let gateNext = true
+  ctx.agentPresets.acquireScope = async function (id, ...args) {
+    if (gateNext && id === 'standard') {
+      gateNext = false
+      previewEntered = true
+      await blockedPreview
+    }
+    return acquire.call(this, id, ...args)
+  }
+  try {
+    const pendingPreview = hostRpc('preview', { presetId: 'standard' })
+    await until('preview scope gate', () => previewEntered)
+    await ctx.settings.update('unrestricted', { delivery: false })
+    releasePreview()
+    const snapshotPreview = await pendingPreview
+    check('in-flight preview body keeps its starting module selection', snapshotPreview.text.includes(rules.EXECUTION_MODE_BLOCK))
+    check('in-flight preview hash matches that same body selection', snapshotPreview.contract === rules.contractFingerprint(ALL_MODULES))
+  } finally {
+    releasePreview()
+    ctx.agentPresets.acquireScope = acquire
+    await ctx.settings.update('unrestricted', ALL_MODULES)
+  }
 
   console.log('minimal structured-tool protocol using native child composition and tool registration')
   const minimalParent = await presetAgent('minimal')
