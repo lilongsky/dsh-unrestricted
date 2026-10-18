@@ -8,7 +8,7 @@
 
 The plugin is deeply integrated into DSH's prompt assembly pipeline. While injecting unrestrict rules, it strictly preserves DSH's tool-calling protocols, Plan Mode, code execution (PTC), and subagent mechanics.
 
-`0.2.3` passes type checking, builds, and real-host integration checks against DSH `0.2.1-alpha.4` (`86a402200d`). It refines blank-session `minimal` preset switching, rosterless profile (`headless`/`sdk`) support, subagent preview isolation, and client state synchronization. The declared `engines.dsh` range is `>=0.2.0-rc.2 <0.2.2-0`, retaining installation support for the local `0.2.0-rc.2` desktop runtime; no desktop UI check was performed in this update.
+The upstream `0.2.3` release notes record type checking, builds, and real-host checks on DSH `0.2.1-alpha.4` (`86a402200d`) for blank-session `minimal` switching, rosterless profiles, subagent preview isolation, and client synchronization. Its declared `engines.dsh` range, `>=0.2.0-rc.2 <0.2.2-0`, includes the older `0.2.0-rc.2`. This branch is currently verified with native local DSH `0.2.1-rc.2` components, a temporary `DSH_HOME`, and temporary sessions; the production Desktop UI, configuration, and sessions were not modified.
 
 The native model reasoning settings and plugin index do not replace this plugin's per-mode prompt assembly. Reasoning levels remain managed by the native model settings.
 
