@@ -12,6 +12,7 @@
  * - minimal works for sessions created before AND after the toggle
  * - toggling back off restores the original prompt everywhere
  * - enabling in the initial profile waits for preset registration before fusion
+ * - selected module bodies and fingerprints match upstream 0.2.3
  *
  * Usage:
  *   node tools/verify-installed.mjs --runtime <path/to/installed/dsh> [--boot-enabled]
@@ -31,6 +32,7 @@ function arg(name) {
 
 const repo = resolve(arg('runtime'))
 const pluginDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const runtimeVersion = JSON.parse(await readFile(join(repo, 'node_modules/@deepseek-ai/dsh-base/package.json'), 'utf8')).version
 const bootEnabled = process.argv.includes('--boot-enabled')
 
 async function importPackage(relativeDir) {
@@ -43,7 +45,10 @@ async function importPackage(relativeDir) {
 
 import { readFile } from 'node:fs/promises'
 
-const home = await mkdtemp(join(tmpdir(), 'dsh-unrestricted-verify-'))
+const home = process.env.DSH_HOME === undefined
+  ? await mkdtemp(join(tmpdir(), 'dsh-unrestricted-verify-'))
+  : resolve(process.env.DSH_HOME)
+await mkdir(home, { recursive: true })
 process.env.DSH_HOME = home
 
 const appBoot = await importPackage('packages/boot/app-boot')
@@ -122,7 +127,11 @@ const ctx = await appBoot.boot('dsh-test', rootConfig, [...bundlePatches, ...ove
 })
 
 let failures = 0
+let checks = 0
+const results = []
 function check(label, condition, detail = '') {
+  checks++
+  results.push({ label, passed: Boolean(condition), ...(detail ? { detail } : {}) })
   if (condition) console.log(`  ok ${label}`)
   else {
     failures++
@@ -154,11 +163,62 @@ async function assemblePrompt(agent) {
     tools: JSON.stringify(assembly.tools),
     contexts: JSON.stringify(assembly.contexts),
     sections: assembly.sections.map(section => section.name),
+    sectionTexts: Object.fromEntries(assembly.sections.map(section => [section.name, section.text])),
   }
 }
 
 async function setEnabled(enabled) {
   await ctx.settings.update('unrestricted', { enabled })
+}
+
+async function customMinimalChild(suffix) {
+  const parent = await presetAgent('minimal')
+  const handle = await parent.ctx.agents.create({
+    sessionId: SessionId(`verify-custom-minimal-${suffix}`), meta: childSessionMeta(parent, 1, false),
+    agentOptions: AGENT_OPTIONS,
+    setup: agentCtx => {
+      applyChildComposition(agentCtx, parent, { persona: 'CUSTOM_MINIMAL_PERSONA: Preserve the delegated reviewer role.' })
+      agentCtx.systemPrompt.section({ name: 'review:custom-rule', order: 20, text: 'CUSTOM_SYSTEM_RULE: Keep the supplied review criteria.' })
+      agentCtx.tools.register({ name: 'structured_output', description: 'Report a structured review.',
+        parameters: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] },
+        output: { schema: { type: 'object', properties: {}, additionalProperties: false }, render: () => [] },
+        execute: async () => { throw new Error('Assembly-only check') } })
+      agentCtx.systemPrompt.section({ name: 'tool:structured_output',
+        order: agentCtx.systemPrompt.getSectionOrder('STRUCTURED_OUTPUT'), text: rules.ANCHORS.structuredOutputFull })
+    },
+  })
+  agents.set(`custom-minimal-${suffix}`, handle)
+  return handle.agent
+}
+
+function checkCustomMinimal(label, before, after) {
+  check(`${label} preserves the caller persona prefix`, after.sectionTexts['deployment:persona-prefix'].startsWith(before.sectionTexts['deployment:persona-prefix']))
+  check(`${label} preserves custom system rules`, after.sectionTexts['review:custom-rule'] === before.sectionTexts['review:custom-rule'])
+  check(`${label} adds the selected body once`, after.text.split(rules.EXECUTION_MODE_BLOCK).length === 2)
+  check(`${label} retains native structured-report protocol`, after.text.includes(rules.ANCHORS.structuredOutputFull))
+  check(`${label} keeps tools and contexts`, after.tools === before.tools && after.contexts === before.contexts)
+}
+
+/** Exercise the actual authenticated private RPC HTTP route, not a local reimplementation. */
+let rpcCookie
+let rpcSequence = 0
+async function hostRpc(endpoint, payload = {}) {
+  const origin = ctx.webServer.getOrigin()
+  if (rpcCookie === undefined) {
+    const response = await fetch(ctx.connection.authenticatedUrl(origin + '/connect'), { redirect: 'manual' })
+    if (response.status !== 302) throw new Error(`RPC auth failed: HTTP ${response.status}`)
+    rpcCookie = response.headers.getSetCookie().map(value => value.split(';', 1)[0]).join('; ')
+    if (!rpcCookie) throw new Error('RPC auth returned no temporary credential')
+  }
+  const response = await fetch(origin + '/dsh-unrestricted/' + endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: rpcCookie, origin },
+    body: JSON.stringify({ type: 'client-request', rpcId: `verify-${++rpcSequence}`, method: endpoint, payload }),
+  })
+  if (!response.ok) throw new Error(`RPC ${endpoint} failed: HTTP ${response.status}`)
+  const envelope = await response.json()
+  if (!envelope.result?.ok) throw new Error(`RPC ${endpoint} returned a failure`)
+  return envelope.result.value
 }
 
 /**
@@ -168,7 +228,7 @@ async function setEnabled(enabled) {
  * @param presetId - preset id to preview.
  * @returns the rendered preview text.
  */
-async function preview(presetId) {
+async function preview(presetId, modules = ALL_MODULES) {
   const { createScope } = await importPackage('packages/core/scope')
   const key = {}
   const scope = createScope(ctx, key)
@@ -180,8 +240,8 @@ async function preview(presetId) {
     await scope.dispose()
   }
   const fused = presetId === 'minimal'
-    ? { sections: [{ name: 'deployment:persona-prefix', text: rules.fusedMinimalPrompt() }] }
-    : rules.fuseSections(assembly.sections, presetId)
+    ? { sections: [{ name: 'deployment:persona-prefix', text: rules.fusedMinimalPrompt(modules) }] }
+    : rules.fuseSections(assembly.sections, presetId, { modules })
   if (fused.issues !== undefined) throw new Error(`preview issues: ${fused.issues.join('; ')}`)
   return rules.renderPreview({ ...assembly, sections: fused.sections }, renderPrompt)
 }
@@ -231,6 +291,9 @@ try {
   const preExisting = await presetAgent('standard', '-pre')
   check('minimal baseline is the stock persona', baseline.minimal.text === 'You are a helpful software engineer assistant.')
 
+  const customBefore = await customMinimalChild('before-enable')
+  const customBeforeNative = await assemblePrompt(customBefore)
+
   console.log('toggle on')
   await setEnabled(true)
 
@@ -239,7 +302,7 @@ try {
 
   for (const id of ['standard', 'ptc', 'cordis']) {
     const on = await assemblePrompt(await presetAgent(id))
-    check(`${id} fused`, on.text.includes(rules.EXECUTION_MODE_BLOCK))
+    check(`${id} fused exactly once`, on.text.split(rules.EXECUTION_MODE_BLOCK).length === 2)
     check(`${id} keeps original content`, [...baseline[id].text.split('\n\n')].every(part => on.text.includes(part.replace('{{model}}', 'deepseek-chat').replace('{{cwd}}', AGENT_META.cwd))))
     check(`${id} tools unchanged`, on.tools === baseline[id].tools)
     check(`${id} contexts unchanged`, on.contexts === baseline[id].contexts)
@@ -251,6 +314,18 @@ try {
   const pre = await assemblePrompt(preExisting)
   check('pre-existing standard session fused on next assembly', pre.text.includes(rules.EXECUTION_MODE_BLOCK))
   check('pre-existing session tools unchanged', pre.tools === baseline.standard.tools)
+
+  console.log('native Minimal custom persona before and after enable')
+  checkCustomMinimal('pre-existing Minimal custom child', customBeforeNative, await assemblePrompt(customBefore))
+  const customAfter = await customMinimalChild('after-enable')
+  const customAfterOn = await assemblePrompt(customAfter)
+  await setEnabled(false)
+  const customAfterNative = await assemblePrompt(customAfter)
+  check('pre-existing Minimal custom child restores native bytes when disabled', (await assemblePrompt(customBefore)).text === customBeforeNative.text)
+  checkCustomMinimal('new Minimal custom child', customAfterNative, customAfterOn)
+  await setEnabled(true)
+  await hostRpc('status')
+  checkCustomMinimal('re-enabled Minimal custom child', customAfterNative, await assemblePrompt(customAfter))
 
   // Plan mode flips exactly one section.
   const planAgent = await presetAgent('standard', '-plan')
@@ -305,6 +380,100 @@ try {
   check('minimal session created before toggle is fused (sweep)', minimalEarlyPrompt.text === expectedMinimal)
   check('minimal tools unchanged', minimalAfter.tools === baseline.minimal.tools)
 
+  console.log('native blank-session preset switching')
+  const switchedAgent = await presetAgent('minimal', '-switch')
+  await until('switch agent minimal shadow', async () =>
+    (await assemblePrompt(switchedAgent)).text === expectedMinimal)
+  for (const id of ['standard', 'ptc', 'cordis']) {
+    await ctx.agentPresets.select(switchedAgent, id)
+    const first = await assemblePrompt(switchedAgent)
+    check(`minimal -> ${id} first assembly removes complete shadow`, first.text !== expectedMinimal
+      && first.text.includes(rules.EXECUTION_MODE_BLOCK)
+      && first.text.startsWith(rules.ANCHORS.identity))
+    check(`minimal -> ${id} restores that preset's tool catalog`, first.tools === baseline[id].tools)
+    await ctx.agentPresets.select(switchedAgent, 'minimal')
+    const returned = await assemblePrompt(switchedAgent)
+    check(`${id} -> minimal first assembly installs selected complete shadow`, returned.text === expectedMinimal)
+  }
+
+  console.log('authenticated native preview RPC and subagent isolation')
+  const mainPrompt = await assemblePrompt(await presetAgent('standard'))
+  const mainPreview = await hostRpc('preview', { presetId: 'standard' })
+  check('preview fingerprint matches the selected full body', mainPreview.contract === rules.contractFingerprint(ALL_MODULES))
+  check('preview HTTP RPC returns exact main-session prompt', mainPreview.source === 'live'
+    && mainPreview.text === mainPrompt.text)
+  const customChild = await parent.ctx.agents.create({
+    sessionId: SessionId('verify-custom-persona'), meta: childSessionMeta(parent, 1, false),
+    agentOptions: AGENT_OPTIONS,
+    setup: agentCtx => { applyChildComposition(agentCtx, parent, { persona: 'Review only this delegated code.' }) },
+  })
+  try {
+    const customPrompt = await assemblePrompt(customChild.agent)
+    check('custom child keeps its delegated persona and receives selected block', customPrompt.text.includes('Review only this delegated code.')
+      && customPrompt.text.includes(rules.EXECUTION_MODE_BLOCK))
+    const afterChild = await hostRpc('preview', { presetId: 'standard' })
+    check('child prompt does not replace main-session preview cache', afterChild.source === 'live'
+      && afterChild.text === mainPrompt.text && !afterChild.text.includes('Review only this delegated code.'))
+  } finally { await customChild.dispose() }
+  await hostRpc('recheck')
+  const afterRecheck = await hostRpc('preview', { presetId: 'standard' })
+  check('recheck invalidates live cache and returns a standing preview', afterRecheck.available
+    && afterRecheck.source === 'standing' && afterRecheck.text.includes(rules.EXECUTION_MODE_BLOCK))
+
+  console.log('preview body and fingerprint use one settings snapshot')
+  const acquire = ctx.agentPresets.acquireScope
+  let releasePreview
+  const blockedPreview = new Promise(resolve => { releasePreview = resolve })
+  let previewEntered = false
+  let gateNext = true
+  ctx.agentPresets.acquireScope = async function (id, ...args) {
+    if (gateNext && id === 'standard') {
+      gateNext = false
+      previewEntered = true
+      await blockedPreview
+    }
+    return acquire.call(this, id, ...args)
+  }
+  try {
+    const pendingPreview = hostRpc('preview', { presetId: 'standard' })
+    await until('preview scope gate', () => previewEntered)
+    await ctx.settings.update('unrestricted', { delivery: false })
+    releasePreview()
+    const snapshotPreview = await pendingPreview
+    check('in-flight preview body keeps its starting module selection', snapshotPreview.text.includes(rules.EXECUTION_MODE_BLOCK))
+    check('in-flight preview hash matches that same body selection', snapshotPreview.contract === rules.contractFingerprint(ALL_MODULES))
+  } finally {
+    releasePreview()
+    ctx.agentPresets.acquireScope = acquire
+    await ctx.settings.update('unrestricted', ALL_MODULES)
+  }
+
+  console.log('minimal structured-tool protocol using native child composition and tool registration')
+  const minimalParent = await presetAgent('minimal')
+  const structuredChild = await minimalParent.ctx.agents.create({
+    sessionId: SessionId('verify-structured-minimal'), meta: childSessionMeta(minimalParent, 1, false),
+    agentOptions: AGENT_OPTIONS,
+    setup: agentCtx => {
+      applyChildComposition(agentCtx, minimalParent, {})
+      agentCtx.tools.register({ name: 'structured_output', description: 'Report a structured review.',
+        parameters: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] },
+        output: { schema: { type: 'object', properties: {}, additionalProperties: false }, render: () => [] },
+        execute: async () => { throw new Error('No tool execution is allowed in this assembly-only check') } })
+      agentCtx.systemPrompt.section({ name: 'tool:structured_output',
+        order: agentCtx.systemPrompt.getSectionOrder('STRUCTURED_OUTPUT'), text: rules.ANCHORS.structuredOutputFull })
+    },
+  })
+  try {
+    const structuredPrompt = await until('structured minimal shadow', async () => {
+      const candidate = await assemblePrompt(structuredChild.agent)
+      return candidate.text.includes(rules.ANCHORS.structuredOutputFull) ? candidate : false
+    })
+    check('minimal complete shadow retains native structured-output schema instruction',
+      structuredPrompt.text.includes(rules.ANCHORS.structuredOutputFull))
+    check('minimal structured child keeps its structured tool schema',
+      JSON.parse(structuredPrompt.tools).some(tool => tool.name === 'structured_output'))
+  } finally { await structuredChild.dispose() }
+
   // Deploy preview: the card reads the contract from the same standing scope
   // the probes use. A standing scope has no agent, so it binds no {{model}}
   // and carries none of the agent-only sections (context:file-reference,
@@ -337,6 +506,7 @@ try {
     const omitted = Array.isArray(MODULE_CONTENT[moduleId])
       ? MODULE_CONTENT[moduleId].map(route => route.text) : [MODULE_CONTENT[moduleId]]
     const expectedBlock = executionModeBlock(selected)
+    check(`${moduleId} native status fingerprint tracks selected body`, (await hostRpc('status')).contract === rules.contractFingerprint(selected))
     for (const id of ['standard', 'ptc', 'cordis', 'minimal']) {
       const prompt = await until(`${moduleId}/${id} update`, async () => {
         const candidate = await assemblePrompt(await presetAgent(id))
@@ -367,6 +537,7 @@ try {
       && !prompt.text.includes('Runtime coordination:') && !prompt.text.includes('RESOURCES / 找资源'))
   } finally { await leanChild.dispose() }
   await ctx.settings.update('unrestricted', NO_MODULES)
+  check('all-off native status has the empty-body fingerprint', (await hostRpc('status')).contract === rules.contractFingerprint(NO_MODULES))
   for (const id of ['standard', 'ptc', 'cordis', 'minimal']) {
     const prompt = await until(`${id} all functions off`, async () => {
       const candidate = await assemblePrompt(await presetAgent(id))
@@ -385,13 +556,30 @@ try {
       return true
     })
   }
-  if (process.argv.includes('--report')) {
-    await writeFile(resolve(arg('report')), JSON.stringify({
-      evidence: 'real installed DSH 0.2.0-rc.2 components with an isolated DSH_HOME; no model request',
-      fullBodyCharacters: rules.EXECUTION_MODE_BLOCK.length, leanBodyCharacters: leanBlock.length,
-      moduleSwitches: MODULE_IDS.length, failures, sizes,
-    }, null, 2) + '\n')
-  }
+  console.log('native anchor failure preserves the actual changed host prompt')
+  const guardAgent = await presetAgent('standard', '-changed-anchor')
+  const removeChangedIdentity = guardAgent.ctx.systemPrompt.section({
+    name: 'harness:identity', order: -100, text: 'Changed native identity for compatibility verification.',
+  })
+  try {
+    await setEnabled(false)
+    const changedNative = await assemblePrompt(guardAgent)
+    await setEnabled(true)
+    await hostRpc('status')
+    await assemblePrompt(await presetAgent('standard'))
+    const guarded = await assemblePrompt(guardAgent)
+    check('changed native anchor leaves prompt bytes unchanged', guarded.text === changedNative.text)
+    check('changed native anchor leaves tools and contexts unchanged', guarded.tools === changedNative.tools
+      && guarded.contexts === changedNative.contexts)
+    check('native anchor failure discards an earlier live preview', (await hostRpc('preview', { presetId: 'standard' })).source !== 'live')
+    const status = await hostRpc('status')
+    check('actual anchor failure is reported on the status RPC', status.modes.standard.state === 'failed'
+      && status.modes.standard.issues.includes('harness identity opening changed'))
+  } finally { removeChangedIdentity() }
+  await hostRpc('recheck')
+  const recovered = await assemblePrompt(guardAgent)
+  check('recheck after restoring the native anchor resumes one selected body',
+    recovered.text.split(rules.EXECUTION_MODE_BLOCK).length === 2)
 
   console.log('toggle off')
   await setEnabled(false)
@@ -402,6 +590,18 @@ try {
     })
     check(`${id} restored to original`, off.text === baseline[id].text)
     check(`${id} tools still unchanged`, off.tools === baseline[id].tools)
+  }
+  if (process.argv.includes('--report')) {
+    await writeFile(resolve(arg('report')), JSON.stringify({
+      evidence: `real installed DSH ${runtimeVersion} components with an isolated DSH_HOME; no model request; no desktop profile changes`,
+      runtimeVersion, isolatedHome: home, results,
+      fullBodyCharacters: rules.EXECUTION_MODE_BLOCK.length, leanBodyCharacters: leanBlock.length,
+      moduleSwitches: MODULE_IDS.length, checks, failures, sizes,
+      fullBodyFingerprint: rules.contractFingerprint(ALL_MODULES),
+      selectedBodyFingerprints: true,
+      limits: ['Prompt assembly and settings persistence were exercised without a provider request; model behavior and token usage were not evaluated.',
+        'The structured Minimal check uses native child composition and Tools.register without launching a provider activation or executing the tool.'],
+    }, null, 2) + '\n')
   }
 } finally {
   for (const handle of agents.values()) await handle.dispose()

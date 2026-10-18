@@ -1,4 +1,4 @@
-/** Verbatim functional fragment from dsh-unrestricted 0.2.2. */
+/** Verbatim functional fragment from upstream dsh-unrestricted 0.2.3. */
 export default [
   {
     "order": 7,

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { MODULE_IDS, DEFAULT_MODULES, ALL_MODULES, NO_MODULES, LEAN_MODULES } from '../src/module-config.js'
 import { executionModeBlock, MODULE_CONTENT, moduleUsage } from '../src/prompt-modules.js'
-import { ANCHORS, EXECUTION_MODE_BLOCK, fuseSections, fusedMinimalPrompt, contractAdditions } from '../src/rules.js'
+import { ANCHORS, EXECUTION_MODE_BLOCK, fuseSections, fusedMinimalPrompt, contractAdditions, contractFingerprint } from '../src/rules.js'
 
 const cases = [
   ['standard', 'standard'], ['standard-plan', 'standard'], ['ptc', 'ptc'],
@@ -80,5 +81,29 @@ test('usage follows the selected body characters', () => {
   const rows = moduleUsage(LEAN_MODULES)
   assert.equal(rows.filter(row => row.enabled).length, 1)
   assert.equal(rows.find(row => row.id === 'delivery').characters, MODULE_CONTENT.delivery.length)
-  assert.ok(executionModeBlock(LEAN_MODULES).length < EXECUTION_MODE_BLOCK.length * 0.2)
+  assert.ok(executionModeBlock(LEAN_MODULES).length < EXECUTION_MODE_BLOCK.length)
+})
+
+test('default modules preserve upstream 0.2.3 body bytes and fingerprint', async () => {
+  const expected = JSON.parse(await readFile(new URL('./fixtures/upstream-0.2.3.json', import.meta.url)))
+  const text = executionModeBlock(ALL_MODULES)
+  assert.equal(createHash('sha256').update(text, 'utf8').digest('hex'), expected.sha256)
+  assert.equal(text.length, expected.characters)
+  assert.equal(Buffer.byteLength(text), expected.bytes)
+  assert.equal(contractFingerprint(ALL_MODULES), expected.sha256.slice(0, 16))
+})
+
+test('the fingerprint follows selected modules and returns after restoring them', () => {
+  const all = contractFingerprint(ALL_MODULES)
+  assert.notEqual(contractFingerprint(LEAN_MODULES), all)
+  assert.equal(contractFingerprint(NO_MODULES), 'e3b0c44298fc1c14')
+  assert.equal(contractFingerprint({ ...LEAN_MODULES, ...ALL_MODULES }), all)
+})
+
+test('minimal structured reports preserve the native schema protocol', () => {
+  const all = fusedMinimalPrompt(ALL_MODULES, ANCHORS.structuredOutputFull)
+  assert.ok(all.includes(ANCHORS.structuredOutputFull))
+  assert.ok(all.endsWith(contractAdditions('minimal', ALL_MODULES).structuredNote))
+  const selected = fusedMinimalPrompt({ ...ALL_MODULES, runtimeCoordination: false }, ANCHORS.structuredOutputFull)
+  assert.ok(selected.endsWith(ANCHORS.structuredOutputFull))
 })

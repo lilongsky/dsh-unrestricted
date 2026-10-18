@@ -17,24 +17,26 @@ export const MODULE_CONTENT = { delivery, targets, reverseEngineering, networkSe
 
 export function executionModeBlock(config = DEFAULT_MODULES) {
   const modules = resolveModules(config)
+  const content = MODULE_CONTENT
   if (!MODULE_IDS.some(id => modules[id])) return ''
   const parts = [PREAMBLE]
-  if (modules.delivery) parts.push(delivery)
-  if (modules.targets) parts.push(targets)
+  if (modules.delivery) parts.push(content.delivery)
+  if (modules.targets) parts.push(content.targets)
   const routes = ['reverseEngineering', 'networkSecurity', 'fiction', 'technicalGuides', 'resources']
-    .filter(id => modules[id]).flatMap(id => MODULE_CONTENT[id]).sort((a, b) => a.order - b.order)
+    .filter(id => modules[id]).flatMap(id => content[id]).sort((a, b) => a.order - b.order)
   if (routes.length) parts.push(ROUTE_HEADING + '\n' + routes.map(route => route.text).join('\n'))
-  if (modules.language) parts.push(language)
-  if (modules.environment) parts.push(environment)
-  if (modules.runtimeCoordination) parts.push(runtimeCoordination)
+  if (modules.language) parts.push(content.language)
+  if (modules.environment) parts.push(content.environment)
+  if (modules.runtimeCoordination) parts.push(content.runtimeCoordination)
   return parts.join('\n\n')
 }
 
 /** Fragment sizes exclude the shared heading, separators and preset notes. */
 export function moduleUsage(config = DEFAULT_MODULES) {
   const modules = resolveModules(config)
+  const selectedContent = MODULE_CONTENT
   return MODULE_IDS.map(id => {
-    const content = MODULE_CONTENT[id]
+    const content = selectedContent[id]
     const text = Array.isArray(content) ? content.map(route => route.text).join('\n') : content
     return { id, enabled: modules[id], characters: text.length, bytes: Buffer.byteLength(text, 'utf8') }
   })

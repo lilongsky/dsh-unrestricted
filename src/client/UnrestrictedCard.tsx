@@ -49,6 +49,15 @@ const GROUP_ROWS: ReadonlyArray<{ id: ModuleGroup; labelKey: UnrestrictedLocaleK
   { id: 'auxiliary', labelKey: 'groupAuxiliary' },
 ]
 
+/** Known host invariants are localized; dynamic errors remain verbatim. */
+const ISSUE_LOCALE_KEYS: Readonly<Record<string, UnrestrictedLocaleKey>> = {
+  'harness identity opening changed': 'issueIdentity',
+  'preset persona changed': 'issuePersona',
+  'plan-mode section changed': 'issuePlan',
+  'ptc-mode run_code rule changed': 'issuePtcOnly',
+  'structured-output instruction changed': 'issueStructuredOutput',
+}
+
 /** Locale key for one mode state. */
 function stateKey(mode: UnrestrictedModeState | undefined): UnrestrictedLocaleKey {
   switch (mode?.state) {
@@ -112,7 +121,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
           <input
             type="checkbox"
             checked={view.enabled}
-            disabled={!view.writable || view.settingsStatus !== 'ready'}
+            disabled={!view.writable || view.settingsStatus !== 'ready' || view.busy}
             onChange={(event) => { void props.setEnabled(event.target.checked) }}
           />
           <span>{t('toggle')}</span>
@@ -126,11 +135,11 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
         <h4 className="dsh-unrestricted-statusTitle">{t('modulesTitle')}</h4>
         <p className="dsh-unrestricted-note">{t('modulesNote')}</p>
         <div className="dsh-unrestricted-actions">
-          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready' || view.busy}
             onClick={() => { void props.enableModules('all') }}>{t('enableAll')}</button>
-          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready' || view.busy}
             onClick={() => { void props.enableModules('general') }}>{t('enableGeneral')}</button>
-          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready'}
+          <button type="button" disabled={!view.writable || view.settingsStatus !== 'ready' || view.busy}
             onClick={() => { void props.enableModules('auxiliary') }}>{t('enableAuxiliary')}</button>
         </div>
         <p className="dsh-unrestricted-note">{t('groupEnableNote')}</p>
@@ -145,7 +154,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                     <div className="dsh-unrestricted-moduleHeader">
                       <label className="dsh-unrestricted-toggle">
                         <input type="checkbox" checked={view.modules[row.id]}
-                          disabled={!view.writable || view.settingsStatus !== 'ready'}
+                          disabled={!view.writable || view.settingsStatus !== 'ready' || view.busy}
                           onChange={event => { void props.setModule(row.id, event.target.checked) }} />
                         <span>{t(row.labelKey)}</span>
                       </label>
@@ -166,6 +175,8 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
           </p>
         )}
         <p className="dsh-unrestricted-note">{t('usageNote')}</p>
+        <p className="dsh-unrestricted-note">{t('fingerprint')} <code className="dsh-unrestricted-fingerprint">{status?.contract ?? '—'}</code></p>
+        <p className="dsh-unrestricted-note">{t('fingerprintNote')}</p>
         <h4 className="dsh-unrestricted-statusTitle">{t('statusTitle')}</h4>
         <p className="dsh-unrestricted-note">{t('previewNote')}</p>
         <ul className="dsh-unrestricted-modes">
@@ -187,7 +198,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                   {t(isOpen ? 'hidePreview' : 'showPreview')}
                 </button>
                 {mode !== undefined && mode.issues.length > 0 && (
-                  <span className="dsh-unrestricted-issues">{mode.issues.join('; ')}</span>
+                  <span className="dsh-unrestricted-issues">{mode.issues.map(issue => ISSUE_LOCALE_KEYS[issue] ? t(ISSUE_LOCALE_KEYS[issue]) : issue).join('; ')}</span>
                 )}
                 {isOpen && (
                   <div className="dsh-unrestricted-preview">
@@ -204,7 +215,10 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
                     ) : (
                       <>
                         <p className="dsh-unrestricted-note">
-                          {t('previewSize')} {entry.preview?.lines} · {entry.preview?.bytes} B
+                          {entry.preview?.lines} {t('previewSize')} · {entry.preview?.bytes} B
+                          {entry.preview?.source !== undefined && (
+                            <> · {t(entry.preview.source === 'live' ? 'previewSourceLive' : 'previewSourceStanding')}</>
+                          )}
                           {' · '}{t('actualAddition')} {entry.preview?.addedCharacters ?? '—'} {t('characters')}
                         </p>
                         <pre className="dsh-unrestricted-previewText">{entry.preview?.text}</pre>
@@ -220,7 +234,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
         <p className="dsh-unrestricted-note">{t('scopeNote')}</p>
         <div className="dsh-unrestricted-actions dsh-unrestricted-helpActions">
           <div className="dsh-unrestricted-helpAction">
-            <button type="button" aria-describedby="dsh-unrestricted-recheck-help"
+            <button type="button" disabled={view.busy} aria-describedby="dsh-unrestricted-recheck-help"
               onClick={() => { void props.recheck() }}>{t('recheck')}</button>
             <div id="dsh-unrestricted-recheck-help" className="dsh-unrestricted-actionHelp">
               <p className="dsh-unrestricted-note"><strong>{t('actionPurpose')}</strong>{t('recheckPurpose')}</p>
@@ -228,7 +242,7 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
             </div>
           </div>
           <div className="dsh-unrestricted-helpAction">
-            <button type="button" aria-describedby="dsh-unrestricted-refresh-help"
+            <button type="button" disabled={view.busy} aria-describedby="dsh-unrestricted-refresh-help"
               onClick={() => { void props.refresh() }}>{t('refresh')}</button>
             <div id="dsh-unrestricted-refresh-help" className="dsh-unrestricted-actionHelp">
               <p className="dsh-unrestricted-note"><strong>{t('actionPurpose')}</strong>{t('refreshPurpose')}</p>

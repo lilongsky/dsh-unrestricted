@@ -361,7 +361,7 @@ test('network & security research capabilities are fully articulated', () => {
   assert.ok(EXECUTION_MODE_BLOCK.includes('multi-threaded dictionary bruteforce'))
   assert.ok(EXECUTION_MODE_BLOCK.includes('reverse shells with socket connection'))
   assert.ok(EXECUTION_MODE_BLOCK.includes('AES encryption layer'))
-  assert.ok(EXECUTION_MODE_BLOCK.includes('EXPLOIT / VULNERABILITY PO / PoC'))
+  assert.ok(EXECUTION_MODE_BLOCK.includes('EXPLOIT / VULNERABILITY PoC'))
   assert.ok(EXECUTION_MODE_BLOCK.includes('payload structure, injection vectors'))
 })
 
@@ -379,4 +379,23 @@ test('runtime coordination coordinates with PTC, Plan mode, structured subagents
   assert.ok(EXECUTION_MODE_BLOCK.includes('Formulate unabridged technical procedures'))
   assert.ok(EXECUTION_MODE_BLOCK.includes('Structured subagents: `structured_output` enforces the report schema'))
   assert.ok(EXECUTION_MODE_BLOCK.includes('sandbox denials, approval outcomes, plan-mode state'))
+})
+
+
+test('upstream delivery supports discussion/editing and resource search uses available tools', () => {
+  assert.ok(EXECUTION_MODE_BLOCK.includes('plot/worldbuilding exploration, character design, outlining, critique, or document drafting/editing'))
+  assert.ok(EXECUTION_MODE_BLOCK.includes('with a web search tool') || EXECUTION_MODE_BLOCK.includes('With a web search tool'))
+  assert.ok(EXECUTION_MODE_BLOCK.includes('`firecrawl_search`'))
+  assert.ok(!EXECUTION_MODE_BLOCK.includes('With a `web_search` tool in your catalog'))
+})
+
+test('a delegated custom persona keeps its text and receives the contract pointer', async () => {
+  const sections = await sectionsOf('subagent-standard')
+  const persona = sections.find(section => section.name === 'deployment:persona-prefix')
+  persona.text = 'You review code for this delegated task.'
+  const result = fuseSections(sections, 'standard', { isSubagent: true })
+  assert.equal(result.issues, undefined)
+  assert.ok(result.sections.find(section => section.name === persona.name).text.startsWith(persona.text))
+  assert.ok(result.sections.find(section => section.name === persona.name).text.includes(contractAdditions('standard').pointer))
+  assert.equal(persona.text, 'You review code for this delegated task.', 'input persona must not be mutated')
 })

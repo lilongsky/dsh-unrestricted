@@ -27,6 +27,7 @@ export interface UnrestrictedModeState {
 /** Host status endpoint payload. */
 export interface UnrestrictedStatus {
   enabled: boolean
+  contract: string
   modes: Record<string, UnrestrictedModeState>
   modules: Array<{ id: ModuleId; enabled: boolean; characters: number; bytes: number }>
   usage: { characters: number; bytes: number; fullCharacters: number; savedCharacters: number }
@@ -35,6 +36,7 @@ export interface UnrestrictedStatus {
 /** Deploy preview for one preset: what switching on would actually assemble. */
 export interface UnrestrictedPreview {
   presetId: string
+  contract: string
   available: boolean
   /** `live` = bytes a live agent received; `standing` = preset scope, no agent bound. */
   source?: 'live' | 'standing'
@@ -68,6 +70,8 @@ export interface UnrestrictedViewSnapshot {
   status: UnrestrictedStatus | null
   /** presetId -> fetched deploy preview. */
   previews: Record<string, UnrestrictedPreviewEntry>
+  /** A host status check or settings mutation is in progress. */
+  busy: boolean
   /** Last transport/business failure, if any. */
   message?: string
 }
@@ -124,9 +128,12 @@ export function createUnrestrictedController(ctx: Context) {
     settingsStatus: 'loading',
     status: null,
     previews: {},
+    busy: false,
   }
   const listeners = new Set<() => void>()
   let previewGeneration = 0
+  let statusGeneration = 0
+  let pendingOperations = 0
 
   const view: UnrestrictedViewSource = {
     getSnapshot: () => snapshot,
@@ -149,6 +156,7 @@ export function createUnrestrictedController(ctx: Context) {
       settingsStatus: settingsSnapshot.status,
       status: snapshot.status,
       previews: changed ? {} : snapshot.previews,
+      busy: pendingOperations > 0,
       message: snapshot.message,
     }
     for (const listener of listeners) listener()
@@ -160,57 +168,54 @@ export function createUnrestrictedController(ctx: Context) {
     return result.value
   }
 
-  async function refresh(): Promise<void> {
+  async function whileBusy(action: () => Promise<void>): Promise<void> {
+    pendingOperations++
+    publish()
     try {
-      const status = await call<UnrestrictedStatus>('status', {})
-      previewGeneration++
-      snapshot = { ...snapshot, status, previews: {}, message: undefined }
-      publish()
+      await action()
     } catch (error) {
       snapshot = { ...snapshot, message: messageOf(error) }
+    } finally {
+      pendingOperations--
       publish()
     }
   }
 
-  async function setField(field: 'enabled' | ModuleId, enabled: boolean): Promise<void> {
-    try {
-      await settings.set(field, enabled)
+  function readStatus(endpoint: 'status' | 'recheck'): Promise<void> {
+    const generation = ++statusGeneration
+    return whileBusy(async () => {
+      const status = await call<UnrestrictedStatus>(endpoint, {})
+      if (generation !== statusGeneration) return
+      // Reject old preview responses even when settings stayed unchanged.
+      previewGeneration++
+      snapshot = { ...snapshot, status, previews: {}, message: undefined }
       publish()
-      // Give the host volatile watcher one turn before reading its derived state.
-      setTimeout(() => void refresh(), 300)
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
+    })
+  }
+
+  const refresh = () => readStatus('status')
+  const recheck = () => readStatus('recheck')
+
+  function setField(field: 'enabled' | ModuleId, value: boolean): Promise<void> {
+    return whileBusy(async () => {
+      const accepted = await settings.set(field, value)
+      if (!accepted) throw new Error('Setting was not saved')
       publish()
-    }
+      await refresh()
+    })
   }
 
   const setEnabled = (enabled: boolean) => setField('enabled', enabled)
   const setModule = (id: ModuleId, enabled: boolean) => setField(id, enabled)
 
-  async function enableModules(group: EnableGroup): Promise<void> {
-    try {
+  function enableModules(group: EnableGroup): Promise<void> {
+    return whileBusy(async () => {
       const ids = group === 'all' ? MODULE_IDS : MODULE_GROUPS[group]
       const accepted = await settings.mutate(ids.map(id => ({ op: 'set', path: [id], value: true })))
       if (!accepted) throw new Error('Module switches were not saved')
       publish()
-      setTimeout(() => void refresh(), 300)
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
-      publish()
-    }
-  }
-
-  async function recheck(): Promise<void> {
-    try {
-      const status = await call<UnrestrictedStatus>('recheck', {})
-      // Reject previews still in flight from before the recheck.
-      previewGeneration++
-      snapshot = { ...snapshot, status, previews: {}, message: undefined }
-      publish()
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
-      publish()
-    }
+      await refresh()
+    })
   }
 
   /**

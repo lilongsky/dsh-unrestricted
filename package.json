@@ -1,15 +1,15 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.2.2",
+  "version": "0.2.3-modular.1",
   "private": true,
-  "description": "Independent functional prompt switches for DeepSeek Harness; compatibility defaults preserve dsh-unrestricted 0.2.2",
+  "description": "Independent functional prompt switches for DeepSeek Harness, preserving upstream 0.2.3 prompt bytes with lifecycle and preview compatibility",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yexi-by/dsh-unrestricted.git"
+    "url": "https://github.com/lilongsky/dsh-unrestricted.git"
   },
-  "homepage": "https://github.com/yexi-by/dsh-unrestricted#readme",
-  "bugs": "https://github.com/yexi-by/dsh-unrestricted/issues",
+  "homepage": "https://github.com/lilongsky/dsh-unrestricted#readme",
+  "bugs": "https://github.com/lilongsky/dsh-unrestricted/issues",
   "type": "module",
   "main": "src/node.js",
   "exports": {
@@ -61,23 +61,23 @@
     "react-dom": "^18.2.0",
     "tsdown": "^0.22.2",
     "typescript": "^5.6.0",
-    "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/schemastery": "3.18.4",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-connection": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-api-remotes": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-scope": "0.2.0-rc.2"
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/schemastery": "3.18.5",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-connection": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-scope": "0.2.1-rc.2"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/schemastery": "3.18.4",
-    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-scope": "0.2.0-rc.2"
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/schemastery": "^3.18.4",
+    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2 || >=0.2.1-0 <0.2.2-0",
+    "@deepseek-ai/dsh-scope": "0.2.0-rc.2 || >=0.2.1-0 <0.2.2-0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
@@ -92,5 +92,8 @@
     "@deepseek-ai/dsh-scope": {
       "optional": true
     }
+  },
+  "engines": {
+    "dsh": ">=0.2.0-rc.2 <0.2.2-0"
   }
 }

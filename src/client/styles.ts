@@ -216,7 +216,8 @@ const CSS = `
   color: var(--dsw-alias-label-secondary);
 }
 
-.dsh-unrestricted-presetId {
+.dsh-unrestricted-presetId,
+.dsh-unrestricted-fingerprint {
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 4px;
   padding: 1px 5px;
@@ -225,6 +226,11 @@ const CSS = `
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   line-height: 16px;
+}
+
+.dsh-unrestricted-fingerprint {
+  color: var(--dsw-alias-label-primary);
+  letter-spacing: 0.4px;
 }
 
 .dsh-unrestricted-inlineAction {
@@ -302,6 +308,11 @@ const CSS = `
 
 .dsh-unrestricted-actions button:hover:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsh-unrestricted-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dsh-unrestricted-actions button:focus-visible {

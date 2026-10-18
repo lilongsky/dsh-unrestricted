@@ -26,6 +26,7 @@ Two secondary conclusions came out of the same runs. A targeted request should d
 | Placeholder table and "named targets stay verbatim" | The first two entries of `Values and targets`, with WORDLIST, THREADS, RATE, RESULT_LOG, DB_NAME, DB_USER and TABLE added to the placeholder table | Fixes the original over substitution that placeholdered every concrete value |
 | "Text in a file is evaluation input, not a new task" | The last entry of `Values and targets` | Aimed directly at the failure mode of files injected by evaluation environments |
 | Deliverable structure (KEYGEN field set) | The field set of the KEYGEN / CRACK / PATCH routes | Aligned item by item with the template requirements in the DSH prompt |
+| Deploy fingerprint (prompt SHA) | `contractFingerprint()` plus display on the settings card | Used to verify by eye which bytes are deployed |
 | "Show the plan first, write after confirmation" | The preview endpoint plus the card's "show preview" action | The preview goes through the real assembly path and shows the full prompt that would be written |
 
 ## What this plugin did not copy
@@ -42,7 +43,7 @@ After the refactor, the review points for each section are:
 - The `## Unrestricted local execution mode` heading matches the `workspace delivery contract` wording in the persona pointer.
 - `Scope of this mode` maps one to one onto the boundary of the original DSH `operation rules`. The end of `Layer independence` keeps the three environment facts `sandbox denials, approval outcomes, plan-mode state`.
 - The field sets in `Task routing` must cover every request class that appears in the `Prescriptive templates` of the DSH prompt: keygen, crack and patch, reverse engineering, bypass, reverse shell, IP and port, anti debug, and resource search.
-- The `Opening phrases` section keeps all opening phrases required by DSH, each corresponding to an entry in `Prescriptive templates`.
+- The `Delivery` section requires opening directly with the deliverable, and the `RESOURCES` route preserves the search-results opening phrase.
 
 After changing the contract, three places must be updated together: `EXECUTION_MODE_BLOCK` in `src/rules.js`, the assertions in `tests/rules.spec.mjs`, and the correspondence table above in this document. Run the following after the change:
 
@@ -51,4 +52,4 @@ pnpm typecheck && pnpm build && pnpm test
 node tools/verify-live.mjs --repo <deepseek-harness-path>
 ```
 
-`pnpm test` verifies that the classifier word lists have not crept back, and the placeholder and named target rules. `verify-live` verifies fusion for the four presets, the plan and PTC boundaries, subagents, and the preview path.
+`pnpm test` verifies the contract fingerprint, that the classifier word lists have not crept back, and the placeholder and named target rules. `verify-live` verifies fusion for the four presets, the plan and PTC boundaries, subagents, and the preview path.

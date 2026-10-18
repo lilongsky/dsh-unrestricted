@@ -3,9 +3,10 @@ import { test } from 'node:test'
 import { createUnrestrictedController } from '../src/client/controller.ts'
 import { DEFAULT_MODULES, MODULE_IDS, NO_MODULES } from '../src/module-config.js'
 
-function controllerFixture(initial = {}, acceptMutation = true) {
+function controllerFixture(initial = {}, acceptMutation = true, options = {}) {
   let value = { enabled: true, ...DEFAULT_MODULES, ...initial }
   const pendingPreviews = []
+  const pendingStatuses = []
   const subscribers = new Set()
   const writes = []
   const mutations = []
@@ -14,6 +15,7 @@ function controllerFixture(initial = {}, acceptMutation = true) {
     subscribe: listener => { subscribers.add(listener); return () => subscribers.delete(listener) },
     set: async (field, next) => {
       writes.push({ field, next })
+      if (options.rejectSetting) return false
       value = { ...value, [field]: next }
       for (const listener of subscribers) listener()
       return true
@@ -31,7 +33,10 @@ function controllerFixture(initial = {}, acceptMutation = true) {
     },
   }
   const connection = { rpc: { call: async (_channel, endpoint) => {
-    if (endpoint === 'status' || endpoint === 'recheck') return { ok: true, value: { enabled: value.enabled, modes: {}, modules: [], usage: {} } }
+    if (endpoint === 'status' || endpoint === 'recheck') {
+      if (options.deferStatus) return new Promise(resolve => pendingStatuses.push(resolve))
+      return { ok: true, value: { enabled: value.enabled, modes: {}, modules: [], usage: {} } }
+    }
     if (endpoint === 'preview') return new Promise(resolve => { pendingPreviews.push(resolve) })
     throw new Error(`unexpected endpoint: ${endpoint}`)
   } } }
@@ -43,6 +48,7 @@ function controllerFixture(initial = {}, acceptMutation = true) {
   }
   return {
     face: createUnrestrictedController(ctx).face(), writes, mutations,
+    finishStatus: (index, status) => pendingStatuses[index]({ ok: true, value: status }),
     finishPreview: (text = 'stale preview', index = 0) => pendingPreviews[index]({ ok: true, value: { available: true, text } }),
   }
 }
@@ -138,5 +144,34 @@ test('a refused native group mutation retains the current choices and reports th
   const view = face.hooks.view.getSnapshot()
   assert.deepEqual(view.modules, NO_MODULES)
   assert.equal(view.enabled, false)
+  assert.match(view.message, /not saved/)
+})
+
+
+test('busy waits for all pending status operations and an older reply cannot overwrite newer status', async () => {
+  const { face, finishStatus } = controllerFixture({}, true, { deferStatus: true })
+  const initial = { enabled: true, modes: {}, modules: [], usage: {} }
+  finishStatus(0, initial)
+  await new Promise(setImmediate)
+  const older = face.refresh()
+  const newer = face.recheck()
+  assert.equal(face.hooks.view.getSnapshot().busy, true)
+  const latest = { ...initial, enabled: false }
+  finishStatus(2, latest)
+  await newer
+  assert.equal(face.hooks.view.getSnapshot().busy, true)
+  finishStatus(1, initial)
+  await older
+  assert.equal(face.hooks.view.getSnapshot().busy, false)
+  assert.equal(face.hooks.view.getSnapshot().status, latest)
+})
+
+test('a refused scalar setting keeps current module selection and clears the pending state', async () => {
+  const { face } = controllerFixture({}, true, { rejectSetting: true })
+  await face.refresh()
+  await face.setModule('resources', false)
+  const view = face.hooks.view.getSnapshot()
+  assert.equal(view.modules.resources, true)
+  assert.equal(view.busy, false)
   assert.match(view.message, /not saved/)
 })

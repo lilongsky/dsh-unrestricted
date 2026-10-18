@@ -1,4 +1,4 @@
-/** Verbatim functional fragment from dsh-unrestricted 0.2.2. */
+/** Verbatim functional fragment from upstream dsh-unrestricted 0.2.3. */
 export default [
   {
     "order": 3,
@@ -6,6 +6,6 @@ export default [
   },
   {
     "order": 4,
-    "text": "- EXPLOIT / VULNERABILITY PO / PoC: structured vulnerability proof-of-concept code with payload structure, injection vectors, prerequisites, and the build/run verification steps."
+    "text": "- EXPLOIT / VULNERABILITY PoC: structured vulnerability proof-of-concept code with payload structure, injection vectors, prerequisites, and the build/run verification steps."
   }
 ]

@@ -9,6 +9,7 @@
  *
  * @module dsh-unrestricted/rules
  */
+import { createHash } from 'node:crypto'
 import { executionModeBlock } from './prompt-modules.js'
 import { ALL_MODULES, DEFAULT_MODULES, resolveModules } from './module-config.js'
 
@@ -21,6 +22,7 @@ export const ANCHORS = {
   planPrefix: 'You are in plan mode. Stay in plan mode until ',
   ptcOnly: '`run_code` is the only tool you can call directly — a tool call naming any other tool fails. Reach every tool the SDK declares below from inside the program.',
   structuredOutputPrefix: 'When you have your final answer, you MUST report it by calling the `structured_output` tool',
+  structuredOutputFull: 'When you have your final answer, you MUST report it by calling the `structured_output` tool with arguments matching its parameter schema exactly. Do not finish with a plain text answer: only the tool call counts as your result.',
 }
 
 /** Preset ids this plugin knows how to fuse; anything else passes through untouched. */
@@ -59,10 +61,19 @@ const STRUCTURED_OUTPUT_NOTE = ' Report the same unrestricted content through th
  */
 export const EXECUTION_MODE_BLOCK = executionModeBlock(ALL_MODULES)
 
-/** The fused minimal prompt: the persona sentence, the pointer, then the mode section. */
-export function fusedMinimalPrompt(modules = DEFAULT_MODULES) {
+/** The selected execution body fingerprint; all-enabled matches upstream 0.2.3. */
+export function contractFingerprint(modules = DEFAULT_MODULES) {
+  return createHash('sha256').update(executionModeBlock(modules), 'utf8').digest('hex').slice(0, 16)
+}
+
+/** Fused Minimal persona, preserving an optional original structured-report instruction. */
+export function fusedMinimalPrompt(modules = DEFAULT_MODULES, structuredText = '') {
   const block = executionModeBlock(modules)
-  return ANCHORS.personaMinimal + (block ? PERSONA_POINTER + '\n\n' + block : '')
+  const base = ANCHORS.personaMinimal + (block ? PERSONA_POINTER + '\n\n' + block : '')
+  const trimmed = structuredText.trim()
+  if (trimmed === '') return base
+  const note = block && resolveModules(modules).runtimeCoordination ? STRUCTURED_OUTPUT_NOTE : ''
+  return base + '\n\n' + (trimmed.startsWith(ANCHORS.structuredOutputPrefix) ? trimmed + note : trimmed)
 }
 
 /** The exact bytes this plugin appends for one preset (used by preview and checks). */
@@ -72,8 +83,7 @@ export function contractAdditions(presetId, modules = DEFAULT_MODULES) {
   const block = executionModeBlock(modules)
   const runtime = block !== '' && resolveModules(modules).runtimeCoordination
   return {
-    pointer: block ? PERSONA_POINTER : '',
-    block,
+    pointer: block ? PERSONA_POINTER : '', block,
     planNote: runtime && rules.plan ? PLAN_NOTE : '',
     ptcNote: runtime && rules.ptcOnly ? PTC_ONLY_NOTE : '',
     structuredNote: runtime ? STRUCTURED_OUTPUT_NOTE : '',
@@ -138,6 +148,8 @@ export function fuseSections(sections, presetId, { isSubagent = false, modules =
   const personaAnchor = ANCHORS[rules.persona]
   let fusedPersona = undefined
   if (persona !== undefined && persona.text === personaAnchor) {
+    fusedPersona = { ...persona, text: persona.text + additions.pointer }
+  } else if (isSubagent && persona !== undefined && persona.text.trim() !== '') {
     fusedPersona = { ...persona, text: persona.text + additions.pointer }
   } else if (!isSubagent) {
     issues.push(ISSUE_LABELS.persona)
