@@ -73,4 +73,5 @@ API 中 issue comments、reviews、review comments、issue events 均为空；6 
 共享 API carrier 继续执行原有鉴权、Host/Origin 及 owner Peer 检查。本插件不改 App 协议，不覆盖 Connection provider，不做失败回退或双路径注册。
 
 默认 Connection 的定向原生验收 11 项通过：HTTP 200、无凭据 401、异源 403、非 owner 403、四模式状态、正文指纹、重新校验、预览、桌面相对路径、非法预设与 method 不匹配。
-这些检查使用官方 Client/Host Connection 和临时会话，不发模型请求；它们区分于后续正式 Desktop 复验。非路由的既有 220 项原生证据继续适用，未重复运行。
+这些检查使用官方 Client/Host Connection 和临时会话，不发模型请求；它们区分于后续正式 Desktop 复验。
+沿用既有 220 项原生验收记录中未改动的提示词、生命周期和配置证据；本次没有重跑整个套件，路由改动另用上述 11 项验证。
