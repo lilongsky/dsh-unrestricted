@@ -11,12 +11,11 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: the ctx.configForms Context merge.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { MODULE_IDS, MODULE_GROUPS, DEFAULT_MODULES, resolveModules, resolvePromptLanguage, type ModuleId, type ModuleSettings, type EnableGroup, type PromptLanguage } from '../module-config.js'
+import { MODULE_IDS, MODULE_GROUPS, DEFAULT_MODULES, resolveModules, type ModuleId, type ModuleSettings, type EnableGroup } from '../module-config.js'
 
 /** The toggle section stored in the `unrestricted` settings namespace. */
 export interface UnrestrictedSettings extends Partial<ModuleSettings> {
   enabled?: boolean
-  promptLanguage?: PromptLanguage
 }
 
 /** Per-preset fusion state reported by the host half. */
@@ -28,7 +27,7 @@ export interface UnrestrictedModeState {
 /** Host status endpoint payload. */
 export interface UnrestrictedStatus {
   enabled: boolean
-  promptLanguage: PromptLanguage
+  contract: string
   modes: Record<string, UnrestrictedModeState>
   modules: Array<{ id: ModuleId; enabled: boolean; characters: number; bytes: number }>
   usage: { characters: number; bytes: number; fullCharacters: number; savedCharacters: number }
@@ -37,6 +36,7 @@ export interface UnrestrictedStatus {
 /** Deploy preview for one preset: what switching on would actually assemble. */
 export interface UnrestrictedPreview {
   presetId: string
+  contract: string
   available: boolean
   /** `live` = bytes a live agent received; `standing` = preset scope, no agent bound. */
   source?: 'live' | 'standing'
@@ -62,7 +62,6 @@ export interface UnrestrictedViewSnapshot {
   /** Persisted toggle; undefined until the settings scope first syncs. */
   enabled: boolean
   modules: ModuleSettings
-  promptLanguage: PromptLanguage
   /** Whether the Host document accepts writes. */
   writable: boolean
   /** Settings scope sync state. */
@@ -71,6 +70,8 @@ export interface UnrestrictedViewSnapshot {
   status: UnrestrictedStatus | null
   /** presetId -> fetched deploy preview. */
   previews: Record<string, UnrestrictedPreviewEntry>
+  /** A host status check or settings mutation is in progress. */
+  busy: boolean
   /** Last transport/business failure, if any. */
   message?: string
 }
@@ -93,7 +94,6 @@ export interface UnrestrictedCardInjected {
   /** Persist the toggle. */
   setEnabled: (enabled: boolean) => Promise<void>
   setModule: (id: ModuleId, enabled: boolean) => Promise<void>
-  setPromptLanguage: (language: PromptLanguage) => Promise<void>
   /** Open one group in a single native mutation, preserving every other choice. */
   enableModules: (group: EnableGroup) => Promise<void>
   /** Re-run the host-side anchor checks and refresh. */
@@ -124,14 +124,16 @@ export function createUnrestrictedController(ctx: Context) {
   let snapshot: UnrestrictedViewSnapshot = {
     enabled: false,
     modules: { ...DEFAULT_MODULES },
-    promptLanguage: 'en',
     writable: false,
     settingsStatus: 'loading',
     status: null,
     previews: {},
+    busy: false,
   }
   const listeners = new Set<() => void>()
   let previewGeneration = 0
+  let statusGeneration = 0
+  let pendingOperations = 0
 
   const view: UnrestrictedViewSource = {
     getSnapshot: () => snapshot,
@@ -145,17 +147,16 @@ export function createUnrestrictedController(ctx: Context) {
     const settingsSnapshot = settings.getSnapshot()
     const enabled = settingsSnapshot.value?.enabled === true
     const modules = resolveModules(settingsSnapshot.value)
-    const promptLanguage = resolvePromptLanguage(settingsSnapshot.value)
-    const changed = enabled !== snapshot.enabled || promptLanguage !== snapshot.promptLanguage || MODULE_IDS.some(id => modules[id] !== snapshot.modules[id])
+    const changed = enabled !== snapshot.enabled || MODULE_IDS.some(id => modules[id] !== snapshot.modules[id])
     if (changed) previewGeneration++
     snapshot = {
       enabled,
       modules,
-      promptLanguage,
       writable: settingsSnapshot.writable,
       settingsStatus: settingsSnapshot.status,
       status: snapshot.status,
       previews: changed ? {} : snapshot.previews,
+      busy: pendingOperations > 0,
       message: snapshot.message,
     }
     for (const listener of listeners) listener()
@@ -167,58 +168,54 @@ export function createUnrestrictedController(ctx: Context) {
     return result.value
   }
 
-  async function refresh(): Promise<void> {
+  async function whileBusy(action: () => Promise<void>): Promise<void> {
+    pendingOperations++
+    publish()
     try {
-      const status = await call<UnrestrictedStatus>('status', {})
-      previewGeneration++
-      snapshot = { ...snapshot, status, previews: {}, message: undefined }
-      publish()
+      await action()
     } catch (error) {
       snapshot = { ...snapshot, message: messageOf(error) }
+    } finally {
+      pendingOperations--
       publish()
     }
   }
 
-  async function setField(field: 'enabled' | ModuleId | 'promptLanguage', value: boolean | PromptLanguage): Promise<void> {
-    try {
-      await settings.set(field, value)
+  function readStatus(endpoint: 'status' | 'recheck'): Promise<void> {
+    const generation = ++statusGeneration
+    return whileBusy(async () => {
+      const status = await call<UnrestrictedStatus>(endpoint, {})
+      if (generation !== statusGeneration) return
+      // Reject old preview responses even when settings stayed unchanged.
+      previewGeneration++
+      snapshot = { ...snapshot, status, previews: {}, message: undefined }
       publish()
-      // Give the host volatile watcher one turn before reading its derived state.
-      setTimeout(() => void refresh(), 300)
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
+    })
+  }
+
+  const refresh = () => readStatus('status')
+  const recheck = () => readStatus('recheck')
+
+  function setField(field: 'enabled' | ModuleId, value: boolean): Promise<void> {
+    return whileBusy(async () => {
+      const accepted = await settings.set(field, value)
+      if (!accepted) throw new Error('Setting was not saved')
       publish()
-    }
+      await refresh()
+    })
   }
 
   const setEnabled = (enabled: boolean) => setField('enabled', enabled)
   const setModule = (id: ModuleId, enabled: boolean) => setField(id, enabled)
-  const setPromptLanguage = (language: PromptLanguage) => setField('promptLanguage', language)
 
-  async function enableModules(group: EnableGroup): Promise<void> {
-    try {
+  function enableModules(group: EnableGroup): Promise<void> {
+    return whileBusy(async () => {
       const ids = group === 'all' ? MODULE_IDS : MODULE_GROUPS[group]
       const accepted = await settings.mutate(ids.map(id => ({ op: 'set', path: [id], value: true })))
       if (!accepted) throw new Error('Module switches were not saved')
       publish()
-      setTimeout(() => void refresh(), 300)
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
-      publish()
-    }
-  }
-
-  async function recheck(): Promise<void> {
-    try {
-      const status = await call<UnrestrictedStatus>('recheck', {})
-      // Reject previews still in flight from before the recheck.
-      previewGeneration++
-      snapshot = { ...snapshot, status, previews: {}, message: undefined }
-      publish()
-    } catch (error) {
-      snapshot = { ...snapshot, message: messageOf(error) }
-      publish()
-    }
+      await refresh()
+    })
   }
 
   /**
@@ -267,7 +264,7 @@ export function createUnrestrictedController(ctx: Context) {
   void refresh()
   return {
     face: (): UnrestrictedCardInjected => ({
-      hooks: { view }, setEnabled, setModule, setPromptLanguage, enableModules, recheck, refresh, loadPreview,
+      hooks: { view }, setEnabled, setModule, enableModules, recheck, refresh, loadPreview,
     }),
   }
 }

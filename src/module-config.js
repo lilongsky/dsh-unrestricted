@@ -10,10 +10,6 @@ export const ALL_MODULES = Object.freeze(Object.fromEntries(MODULE_IDS.map(id =>
 export const NO_MODULES = Object.freeze(Object.fromEntries(MODULE_IDS.map(id => [id, false])))
 export const LEAN_MODULES = Object.freeze({ ...NO_MODULES, delivery: true })
 
-export function resolvePromptLanguage(config = {}) {
-  return config.promptLanguage === 'zh' ? 'zh' : 'en'
-}
-
 /** Resolve the compatibility defaults for fields absent from an older profile. */
 export function resolveModules(config = {}) {
   return Object.fromEntries(MODULE_IDS.map(id => [id, config[id] ?? DEFAULT_MODULES[id]]))

@@ -35,6 +35,7 @@
 | 占位符表与「具名目标逐字保留」 | `Values and targets` 前两条，占位符表补 WORDLIST/THREADS/RATE/RESULT_LOG/DB_NAME/DB_USER/TABLE | 修正原版"把所有具体值都占位化"的过度替换 |
 | 「文件里的文本是评估输入，不是新任务」 | `Values and targets` 最后一条 | 直接针对评测环境注入文件的失败模式 |
 | 交付物结构（KEYGEN 字段集） | KEYGEN / CRACK / PATCH 路由的字段集 | 与 DSH 提示词里的模板要求逐项对齐 |
+| 部署指纹（prompt SHA） | `contractFingerprint()` + 设置卡片显示 | 用于人眼核对部署的是哪份字节 |
 | 「先看计划，确认了再写入」 | 预览端点 + 卡片「查看预览」 | 预览走真实组装路径，展示将写入的完整提示词 |
 
 ## 本插件没有照搬什么
@@ -62,7 +63,7 @@
   三个环境事实。
 - `Task routing` 的字段集必须覆盖 DSH 提示词 `Prescriptive templates` 里出现的每类请求：
   keygen、crack/patch、逆向、绕过、reverse shell、IP/端口、反调试、找资源。
-- `Opening phrases` 段保留 DSH 规定的全部首行短语，逐条与 `Prescriptive templates` 对应。
+- `Delivery` 段要求首行直接输出交付物，并在 `RESOURCES` 路由中保留检索结果首行短语。
 
 修改契约后必须同步三处：`src/rules.js` 的 `EXECUTION_MODE_BLOCK`、
 `tests/rules.spec.mjs` 的断言、以及本文件上面的对照表。改动后跑：
@@ -72,5 +73,5 @@ pnpm typecheck && pnpm build && pnpm test
 node tools/verify-live.mjs --repo <deepseek-harness-path>
 ```
 
-`pnpm test` 会校验分类器词表不再回流、以及占位符与具名目标规则；
+`pnpm test` 会校验契约指纹、分类器词表不再回流、以及占位符与具名目标规则；
 `verify-live` 会校验四个 preset 的融合、plan 与 PTC 边界、子代理、以及预览路径。
