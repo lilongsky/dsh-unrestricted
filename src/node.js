@@ -479,6 +479,7 @@ export function apply(ctx, config) {
   ctx.on('agent-preset/selected', (sessionId) => {
     const agent = ctx.get('agents')?.get?.(sessionId)
     if (agent === undefined) return
+    state.customMinimal.delete(agent)
     if (!state.enabled) {
       unshadowMinimal(agent)
       return
@@ -487,6 +488,7 @@ export function apply(ctx, config) {
   })
 
   ctx.on('agent/disposed', ({ agent }) => {
+    state.customMinimal.delete(agent)
     state.customMinimal.delete(agent)
     unshadowMinimal(agent)
   })

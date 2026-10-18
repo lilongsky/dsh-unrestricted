@@ -132,7 +132,7 @@ export function createUnrestrictedController(ctx: Context) {
     busy: false,
   }
   const listeners = new Set<() => void>()
-  let previewGeneration = 0
+  const previewRequests = new Map<string, symbol>()
   let statusGeneration = 0
   let pendingOperations = 0
 
@@ -149,7 +149,7 @@ export function createUnrestrictedController(ctx: Context) {
     const enabled = settingsSnapshot.value?.enabled === true
     const modules = resolveModules(settingsSnapshot.value)
     const changed = enabled !== snapshot.enabled || MODULE_IDS.some(id => modules[id] !== snapshot.modules[id])
-    if (changed) previewGeneration++
+    if (changed) previewRequests.clear()
     snapshot = {
       enabled,
       modules,
@@ -185,12 +185,17 @@ export function createUnrestrictedController(ctx: Context) {
   function readStatus(endpoint: 'status' | 'recheck'): Promise<void> {
     const generation = ++statusGeneration
     return whileBusy(async () => {
-      const status = await call<UnrestrictedStatus>(endpoint, {})
-      if (generation !== statusGeneration) return
-      // Reject old preview responses even when settings stayed unchanged.
-      previewGeneration++
-      snapshot = { ...snapshot, status, previews: {}, message: undefined }
-      publish()
+      try {
+        const status = await call<UnrestrictedStatus>(endpoint, {})
+        if (generation !== statusGeneration) return
+        // Reject old preview responses even when settings stayed unchanged.
+        previewRequests.clear()
+        snapshot = { ...snapshot, status, previews: {}, message: undefined }
+        publish()
+      } catch (error) {
+        if (generation !== statusGeneration) return
+        snapshot = { ...snapshot, message: messageOf(error) }
+      }
     })
   }
 
@@ -225,7 +230,8 @@ export function createUnrestrictedController(ctx: Context) {
    * @param presetId - preset id from the card's row.
    */
   async function loadPreview(presetId: string): Promise<void> {
-    const generation = previewGeneration
+    const request = Symbol(presetId)
+    previewRequests.set(presetId, request)
     snapshot = {
       ...snapshot,
       previews: { ...snapshot.previews, [presetId]: { status: 'loading' } },
@@ -233,13 +239,13 @@ export function createUnrestrictedController(ctx: Context) {
     publish()
     try {
       const preview = await call<UnrestrictedPreview>('preview', { presetId })
-      if (generation !== previewGeneration) return
+      if (previewRequests.get(presetId) !== request) return
       snapshot = {
         ...snapshot,
         previews: { ...snapshot.previews, [presetId]: { status: 'ready', preview } },
       }
     } catch (error) {
-      if (generation !== previewGeneration) return
+      if (previewRequests.get(presetId) !== request) return
       snapshot = {
         ...snapshot,
         previews: { ...snapshot.previews, [presetId]: { status: 'failed', message: messageOf(error) } },
