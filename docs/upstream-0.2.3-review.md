@@ -18,7 +18,7 @@ API 中 issue comments、reviews、review comments、issue events 均为空；6 
 | 预设 scope lease / 无 registry 支持 | 采用；保留旧 mount 兼容路径，原生 base 标准/PTC 组合另行验证。 |
 | 主/子代理预览隔离，status 等待校验 | 采用；实际认证 HTTP RPC 验证主会话字节、子代理隔离、recheck 后静态预览。 |
 | delegated custom persona 追加指针 | 采用；保留子代理自身角色，避免其覆盖主会话预览。 |
-| Minimal 结构化报告指令 | 采用并修正上游遗漏的 scope：当前 Tools.schemas(scope) 省略参数会读取 global view，无法看到子代理工具；传入 context.scope 或 agent 后原生验证通过。 |
+| Minimal 结构化报告指令 | 采用并修正上游遗漏的 scope：当前 Tools.schemas(scope) 省略参数会读取 global view，无法看到子代理工具；显式传入 context.agent 后读取代理工具视图。 |
 | 等待状态、错误本地化、预览来源 | 采用；保留 fork 原有旧预览拒绝机制，等待状态覆盖重叠操作，保留功能模块/快捷按钮。 |
 | 提示词正文变化 | 采用作者完整 0.2.3 单份原文，再沿既有功能边界拆分；Delivery 的交付形式、Fiction 的文风适配、Resources 的工具识别和 PoC 拼写均不自行改写。全选用独立上游 SHA 回归。 |
 | fingerprint 与 anchors / 失败原样恢复 | 恢复所选正文 fingerprint，保留逐次锚点检查和失败回原文；失败时清理此前实时预览，hash 不替代兼容检查。 |

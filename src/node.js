@@ -219,7 +219,7 @@ export function apply(ctx, config) {
         // Preserve structured-output instructions when a structured subagent
         // runs under minimal.
         const hasStructured = context?.agent?.ctx?.tools
-          ?.schemas?.(context.scope ?? context.agent)
+          ?.schemas?.(context.agent)
           ?.some(tool => tool.name === 'structured_output') === true
         return hasStructured
           ? fusedMinimalPrompt(state.modules, ANCHORS.structuredOutputFull)
