@@ -1,6 +1,8 @@
 # 上游 0.2.3 比较记录（2026-10-18）
 
-## PR #6 的已确认状态
+> 历史记录：以下状态与比较属于 2026-10-18 的 0.2.3 集成过程。PR #6 现已关闭；当前独立维护版为 0.3.0，基于 upstream 0.2.4，稳定入口和本轮验证范围见[维护说明](./MAINTENANCE.md)。
+
+## PR #6 在初次查询时的状态
 
 [PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) 仍为 open，未 merged，`closed_at` 与 `merged_at` 均为空。
 API 中 issue comments、reviews、review comments、issue events 均为空；6 个提交全部来自我们的贡献分支，head 为

@@ -1,227 +1,91 @@
-# dsh-unrestricted
-
-> ローカル互換ブランチは上流 `v0.2.3` に基づく `0.2.3-modular.1` です。10 個の機能スイッチを維持し、全選択時の本文は上流とバイト単位で一致します。詳細は [MODULAR.md](./MODULAR.md) を参照してください。未プッシュのブランチです。以下は上流ドキュメントです。
+# dsh-unrestricted · 独立保守 fork
 
 [简体中文](./README.md) | [English](./README.en.md) | **日本語**
 
-`dsh-unrestricted` は、**DeepSeek Harness (DSH)** 向けのプロンプト制限解除（アンレストリクト）プラグインです。システムプロンプト（System Prompt）に専用の制限解除ルールを注入することで、リバースエンジニアリング、ペネトレーションテスト、創作執筆、特殊技術手順における回答拒否や説教を解除し、完全で実行可能なコードと技術ソリューションを直接出力させます。
+[upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4) を基にした独立保守版です。プラグインのバージョンは **0.3.0**。作者の単一プロンプト本文を保ち、10 個の機能スイッチ、グループボタン、選択した本文の指紋、Desktop 用の公開 API 連携を保守します。
 
-プラグインは DSH のプロンプト構築メカニズムに深く適合しており、制限解除ルールを動的に注入しつつ、DSH のツール呼び出しプロトコル、計画モード（Plan Mode）、コード実行（PTC）、サブエージェントの実行ロジックを完全に維持します。
+安定版の入口は [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)、固定版は [v0.3.0](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.0) です。これはプラグインの版であり、DSH 本体の版ではありません。
 
-上流 `0.2.3` のリリース記録は、DSH `0.2.1-alpha.4`（`86a402200d`）での型チェック、ビルド、実ホスト検証を示しています。対象は新規セッションの `minimal` 切り替え、プリセット登録表のない構成、サブエージェントのプレビュー分離、クライアント同期です。上流が宣言する `engines.dsh` の範囲 `>=0.2.0-rc.2 <0.2.2-0` には旧版 `0.2.0-rc.2` も含まれます。本ブランチでは現在のローカル DSH `0.2.1-rc.2` の実コンポーネントと一時 `DSH_HOME`、一時セッションで分離検証を実施しており、通常の Desktop UI、設定、既存セッションは変更していません。
+## 保守方針
 
-公式の推論レベル設定とプラグイン索引は、本プラグインのモード別プロンプト組み立てを代替しません。推論レベルは公式のモデル設定で管理します。
+上流は単一の本文と全体スイッチを中心とする軽量な構成です。本 fork は、その基盤の上で機能別の選択と Desktop 連携を保守します。[PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) は終了しており、今後のリリースはこのリポジトリで独立して行い、必要な上流修正を引き続き取り込みます。
 
----
+0.3.0 は upstream 0.2.4 の Minimal カスタム persona のライフサイクル、ネイティブの構造化出力指示、並行プレビュー、状態リクエストの修正を統合しています。モジュール選択、プレビューの本文と指紋の一貫性、公開状態 API は引き続き保ちます。[保守説明](./docs/MAINTENANCE.md) と [変更履歴](./CHANGELOG.md) を参照してください。
 
-## 目次
+## 機能
 
-- [主要機能](#主要機能)
-- [技術アーキテクチャ](#技術アーキテクチャ)
-  - [動的インターセプトと注入](#動的インターセプトと注入)
-  - [各モードとの高度な協調](#各モードとの高度な協調)
-  - [アンカー検証と自動安全フォールバック](#アンカー検証と自動安全フォールバック)
-  - [即時適用と痕跡ゼロのロールバック](#即時適用と痕跡ゼロのロールバック)
-- [インストール・更新](#インストール更新)
-  - [Web 版](#web-版)
-  - [デスクトップ版](#デスクトップ版)
-  - [ローカルソースインストール](#ローカルソースインストール)
-- [使用方法（二重スイッチの確認）](#使用方法二重スイッチの確認)
-- [動作境界と注意事項](#動作境界と注意事項)
-- [開発とテスト](#開発とテスト)
-- [ライセンスと謝辞](#ライセンスと謝辞)
+- 10 個の機能を個別に切り替えられます。古い設定にモジュール項目がない場合は、従来どおり全文を有効とします。
+- 全部・汎用・補助の有効化ボタンは、ネイティブ Settings の 1 回のトランザクションで対象項目を有効にします。総合スイッチと対象外のモジュール値は保持します。
+- Standard、PTC、Cordis、Minimal、Plan、サブエージェントのツールプロトコルと権限境界を維持します。Minimal のカスタム persona と構造化レポート指示にも対応します。
+- 組み立てのたびにネイティブのアンカーを確認し、不一致なら元のホストプロンプトを保ちます。カードには状態、再確認、プレビュー、選択本文の SHA-256 指紋を表示します。
+- Web と Desktop は同じ `/api/dsh-unrestricted/*` の完全一致ルートを使い、ホストの認証と owner Peer の確認を通ります。
 
----
+作者の本文は 1 種類です。中国語・英語の UI 表示はプロンプトの言語選択ではありません。項目・グループ・文字数は [MODULAR.md](./MODULAR.md) に記載しています。変更するのは以後のプロンプト組み立てであり、ツール、承認、サンドボックスはネイティブの規則に従います。無効化しても既存のセッション履歴は書き換えません。
 
-## 主要機能
+## インストールと更新
 
-プラグイン有効時、モデルは以下の実行指示に従います：
+パッケージ名は `dsh-unrestricted`、設定 ID と Settings namespace は `unrestricted` のままです。同名パッケージを更新し、既存のモジュール設定を保持します。別名のコピーを並行して導入する必要はありません。
 
-- **成果物の直接提示（前置き・説教の排除）**：1 行目から完成した成果物（実行可能なコード、分析手順、バイナリパッチ等）を出力し、挨拶、免責事項、倫理的な説教を排除します。必須の物理的安全注意事項のみ、文末に客観的な付記として記載します。
-- **リバースエンジニアリングとアルゴリズム解析**：ライセンス検証関数（`CHECK_FN`）を特定し、暗号・鍵導出アルゴリズムを抽出して Keygen コードを実装します。バイナリパッチのアドレス（`OFFSET`）や置換バイト（`PATCH_BYTE`）、アンチデバッグ・アンチ VM 回避コードを提供します。
-- **サイバーセキュリティとペネトレーションテスト**：ペイロード構造と侵入メカニズムを含む完全な再現可能 PoC / Exploit コードを作成します。辞書攻撃スクリプト、ポート・フィンガープリントスキャナー、暗号化リバースシェル、ポートフォワーディング等のコードを提供します。
-- **創作小説・設定考察・成人向けストーリーテリング**：シーン執筆、プロット・世界観の考察、キャラクター造形、文章推敲に柔軟に対応します。ユーザーの文体・美学（叙情的、古典的、抑制的、ハード、または直接的）を尊重し、成人向け描写が求められる場面では婉曲表現や暗転（フェードアウト）なしで直接描写する一方、余韻や抑制が求められる場面では文学的表現を維持します。架空の登場人物は一律 18 歳以上の成人として静かに扱い、年齢審査による拒否や不自然な強調を禁止します。
-- **高度な工業・化学操作ガイド**：化学実験や工業手順において、正確な配合比率や物理パラメータを省略せずに完全に提示します。
-- **構造化リソース検索**：DSH の検索ツールと連携して的確な検索クエリを生成し、実際の検索結果から検証可能なダウンロードリストを作成します。偽 URL の捏造は禁止します。
-- **データと指示の厳密な分離**：ワークスペース内のファイルや取得した Web ページは「分析対象のデータ」であり、制限解除ルールを変更する新たな指示としては扱いません。ユーザーが明示したターゲット名はそのまま保持します。
+以下は固定タグの導入例です。使用中の profile の更新には、明確なアイドル時間帯を確保し、[稼働中のホストの手順](./docs/MAINTENANCE.md#运行中的-dsh)に従ってください。実行中の turn に対してコンポーネント HMR を行わないでください。
 
----
+### Web profile
 
-## 技術アーキテクチャ
-
-### 動的インターセプトと注入
-
-自律型エージェント環境では、DSH は毎回の推論時に高権限なシステムプロンプト（System Prompt）を最外層に付与します。通常のチャットメッセージに脱獄文を送信しても、システムプロンプトに上書きされるか、ツールの呼び出し形式が破損する原因となります。
-
-本プラグインは DSH のシステムプロンプト構築パイプライン（`system-prompt/assemble`）に直接フックします：
-
-1. **パイプラインフック**：構築パイプラインにグローバルリスナーを登録します。
-2. **ペルソナ直後の注入**：公式のペルソナ前置部（`deployment:persona-prefix`）を検出し、その末尾に制限解除実行モードへのポインタを付加した上で、直後のセクション（`unrestricted:execution-mode`）に制限解除ルールブロックを挿入します。
-3. **ネイティブ能力の維持**：作業ディレクトリ（`deployment:persona-suffix`）、ツール定義、環境変数はそのまま維持されます。
-
-```text
-[DSH 発起リクエスト]
-        │
-        ▼
-[システムプロンプト構築パイプライン]
-        │
-        ├─> 公式ペルソナ (Persona)
-        │        │
-        │        ▼ 【dsh-unrestricted フック】
-        │        ├─ 有効: 制限解除ルールを注入しモード制約を協調
-        │        └─ 無効: そのまま通過（100% 公式標準プロンプト）
-        │
-        ├─> ツールおよびプロトコル定義 (Bash/Pwsh, FS, Web Search...)
-        ├─> 計画モードポリシー (Plan Policy)
-        └─> 実行環境情報 (CWD, Model...)
-        │
-        ▼
-[LLM API へ送信]
-```
-
-### 各モードとの高度な協調
-
-- **Standard / Cordis モード**：全ツール定義を維持しつつ、ペルソナ直後に制限解除ブロックを挿入します。
-- **PTC モード（コード実行専用）**：PTC では `run_code` のみが使用可能です。プラグインは `tools:ptc-only` に注記を追加し、Python/Node 内部で実行されるスクリプトや SDK ツール呼び出しにも制限解除を適用します。
-- **Plan Mode（計画モード）**：安全上の制約は「実行のタイミング」（承認前のファイル変更禁止）にのみ適用され、計画ドキュメント（Markdown）内では技術的な手順やコードを制限なくすべて展開するよう指示します。
-- **Minimal モード**：エージェントスコープでペルソナを適切に置換し、制限解除ルールを注入します。無効化時には自動的に元の最小ペルソナへ復帰します。
-- **サブエージェント**：派生したバックグラウンドタスクや構造化出力（`structured_output`）も自動的に制限解除設定を継承します。
-
-### アンカー検証と自動安全フォールバック
-
-DSH 本体のバージョン更新によるプロンプト構造の変化を検知するため、プラグインは注入前に特徴文字列（`src/rules.js` の `ANCHORS`）を照合します：
-
-- ペルソナ冒頭、Plan モード規則、`run_code` の説明文等を照合します。
-- すべて一致した場合のみ注入を実行します。
-- アンカーが不一致となった場合、プラグインは**該当モードを自動的に公式デフォルトへ安全にフォールバック**させ、UI 上に未検証の項目を表示します。
-
-### 即時適用と痕跡ゼロのロールバック
-
-- 設定の変更は即座に反映され、サービスの再起動なしで次回の会話から新しいプロンプトが使用されます。
-- プラグインをオフにすると即座に公式デフォルトに戻り、会話ログや DB に痕跡を残しません。
-
----
-
-## インストール・更新
-
-### Web 版
-
-CLI またはサーバー環境で `dsh web` を実行している場合。
-
-#### インストール
 ```sh
-# 指定バージョンのインストール
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.3
-
-# または master 最新コードのインストール
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted
+dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
-インストール後に `dsh web` を再起動し、下記の使用方法に従ってプラグインと機能スイッチの両方をオンにします。
 
-#### アップデート
+安定ブランチに追従する場合は `#v0.3.0` を `#master` に変更します。
+
+### Desktop profile
+
+対応する Desktop App に付属する CLI を使い、`desktop` profile を指定します。macOS の例：
+
 ```sh
-dsh plugin --profile web remove dsh-unrestricted
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#新バージョン
-```
-更新後に `dsh web` を再起動します。
-
-#### アンインストール
-```sh
-dsh plugin --profile web remove dsh-unrestricted
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
 
----
+Windows の標準インストール先の例：
 
-### デスクトップ版
-
-DeepSeek Harness 公式デスクトップアプリ環境。
-
-> **注意**：デスクトップ版は独立した `desktop` プロファイルを使用します。グローバルの `dsh` コマンドではなく、アプリ付属の CLI を指定して実行する必要があります。
-
-#### 1. デスクトップ版 CLI のパス
-Windows の標準パス：
-```text
-%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd
-```
-
-#### 2. インストール手順
-1. デスクトップアプリを完全に終了します。
-2. PowerShell 等で以下を実行します：
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#v0.2.3
-   ```
-3. デスクトップアプリを起動し、下記の使用方法に従って設定を完了します。
-
-#### 3. アップデート手順
-1. デスクトップアプリを完全に終了します。
-2. アンインストールと再インストールを実行します：
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#新バージョン
-   ```
-3. デスクトップアプリを再起動します。
-
-#### 4. アンインストール
 ```powershell
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" `
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
 
----
+このリリースビルドの検証記録は隔離環境での確認を対象とします。正式 profile のホット更新と一時セッションでの受け入れ確認は、対応するコミットとパッケージの SHA-256 に紐付けて別途記録します。
 
-### ローカルソースインストール
-
-開発・デバッグ用：
+### ローカルビルド
 
 ```sh
-# Web 版
-dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
-
-# デスクトップ版
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add file:D:/work/dsh/plugin/unrestricted
-```
-
----
-
-## 使用方法（二重スイッチの確認）
-
-> **重要：両方のスイッチがオンになって初めて、制限解除が実際に有効化されます！**
->
-> 1. **ステップ 1（プラグイン読み込みスイッチ）**：サイドバーの **「プラグイン」** 管理画面を開き、インストール済み一覧から `dsh-unrestricted`（破限モード）を探して、**プラグイン自体を有効化（オン）**にします。ここがオフの場合、DSH はプラグインのコード自体をロードしません。
-> 2. **ステップ 2（機能トグルスイッチ）**：**「プラグイン」** 管理画面で `dsh-unrestricted` をクリックして詳細設定カードを開き、上部の **「破限を有効化」** スイッチをオンにします。
->
-> 上記の 2 つが両方オンになって初めて、システムプロンプト構築時に制限解除ルールが注入されます。
-
-### 設定画面の機能
-
-- **有効化スイッチ**：ワンクリックで制限解除を切り替えます。
-- **各モードの状態表示**：Standard、PTC、Cordis、Minimal の注入状態を表示します。「有効」であれば正常にアンカーが一致し、適用されています（未ロードの場合はプラグイン管理画面でプラグインがオンになっているか確認してください）。
-- **ルールフィンガープリント**：適用されている制限解除テキストの SHA-256 ハッシュ（先頭 16 文字）を表示します。
-- **プロンプトプレビュー**：「プレビューを表示」をクリックすると、モデルに送信される**実際のシステムプロンプト全文・行数・バイト数**を確認できます。
-
----
-
-## 動作境界と注意事項
-
-- **外部ネットワークフィルター**：商用 AI サービスがネットワーク層で設けているキーワード遮断システム（API Gateway）に引っかかった場合、通信が強制切断されます。この外部ネットワーク遮断はプロンプトで回避することはできません。フィルターの緩いプロバイダーや、ローカル（Ollama / vLLM）で動作するオープンモデルのご利用を推奨します。
-- **ホストセキュリティ機構の維持**：本プラグインはモデルの思考・出力内容の制限を解除するものであり、DSH のファイル読み書きサンドボックスやコマンド実行前のユーザー承認プロンプトは引き続き安全に動作します。
-- **コンプライアンス**：正当なセキュリティ研究、リバースエンジニアリング、ソフトウェア開発、創作活動を目的としています。
-
----
-
-## 開発とテスト
-
-```sh
-git clone https://github.com/yexi-by/dsh-unrestricted.git
+git clone --branch v0.3.0 https://github.com/lilongsky/dsh-unrestricted.git
 cd dsh-unrestricted
-pnpm install
-pnpm typecheck
-pnpm build
-pnpm test
+npm ci --ignore-scripts
+npm test
+npm run typecheck
+npm run build
+npm pack
 ```
 
----
+作成したパッケージを確認した後、目的の profile の CLI で同名の tarball を導入できます。
+
+```sh
+dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.0.tgz" --ignore-scripts
+```
+
+## 使い方
+
+1. ネイティブのプラグイン管理画面で `dsh-unrestricted` コンポーネントを有効にします。
+2. 設定カードの総合スイッチを有効にし、使用するモジュールを選びます。
+3. モードの状態と本文の指紋を確認します。プレビューには取得元が表示され、静的プリセットと実際のオンライン要求は区別されます。
+
+無効なモジュールは以後の本文に含まれません。全モジュールまたは総合スイッチを無効にすると、ネイティブの組み立てに戻ります。既存の記録は保持します。
+
+## 検証範囲
+
+`package.json` の宣言範囲は `>=0.2.0-rc.2 <0.2.2-0` です。今回の隔離検証対象は DSH `0.2.1-rc.2` であり、実施状況は[保守説明](./docs/MAINTENANCE.md#验证记录)に記録します。
+
+`0.2.3-modular.2` には、2026-10-18 の隔離ホスト検証と macOS Desktop の状態表示、4 モードの静的プレビュー、再確認の受け入れ記録があります。これは旧版の履歴であり、0.3.0 の実機受け入れ結果としては扱いません。回答品質、拒否率、課金 token、4 モードすべてのオンライン実行には、それぞれ実際の要求による検証が必要です。
 
 ## ライセンスと謝辞
 
-- 本プロジェクトの初期プロンプトは [Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith) の `gpt-unrestricted.md`（MIT License）を基に二次創作・改良されたものです。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) をご覧ください。
-- 本プロジェクトは [MIT License](LICENSE) の下で公開されています。
+原プロジェクトは [yexi-by](https://github.com/yexi-by/dsh-unrestricted) によるものです。作者の表記と [MIT License](./LICENSE) を保持します。[Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith) を含む既存の出典は [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) に記載しています。

@@ -1,8 +1,8 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.2.3-modular.2",
+  "version": "0.3.0",
   "private": true,
-  "description": "Independent functional prompt switches for DeepSeek Harness, preserving upstream 0.2.3 prompt bytes with lifecycle and preview compatibility",
+  "description": "Independently maintained modular prompt controls for DeepSeek Harness, based on upstream 0.2.4 with public Desktop API integration",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -29,7 +29,8 @@
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "locale",
-    "MODULAR.md"
+    "MODULAR.md",
+    "CHANGELOG.md"
   ],
   "dsh": {
     "bundle": {

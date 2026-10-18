@@ -1,53 +1,60 @@
-# 功能拆分版
+# 功能模块
 
-本兼容分支基于作者 `v0.2.3` / `e884f740e379ab71be2dfa2ce7d950a6da7194dd`，版本为 `0.2.3-modular.2`。
-保留十个独立功能模块、三组快捷按钮和每项作用说明；默认全部开启，缺少新字段的旧配置也按开启解析。
+本 fork 的独立版本为 **0.3.0**，基于 upstream **v0.2.4**（`7beb2d2546599723f3b2958705d1da3b0bbd5e70`）。稳定入口为 [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)，固定 tag 为 [v0.3.0](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.0)。
 
-本版采用作者单份原始正文，不再提供提示词中英文选择。界面文案仍有中文和英文；界面语言不会改变注入正文。
-历史 `feature/chinese-prompts` 分支和正式安装中的自定义文件不在本次修改范围内，中文试用文件不进入本版发布包。
+作者单份原始正文保持不变；界面提供中文和英文，不提供另一套提示词语言选择。包名 `dsh-unrestricted`、配置 ID 与 Settings namespace `unrestricted` 保持不变，旧模块字段继续读取。
 
-## 模块和用量
+## 模块和快捷组
 
-| 功能 | 配置字段 |
-| --- | --- |
-| 通用交付 | `delivery` |
-| 目标与输入数据 | `targets` |
-| 软件逆向与补丁 | `reverseEngineering` |
-| 网络安全 | `networkSecurity` |
-| 虚构创作 | `fiction` |
-| 技术与实验指南 | `technicalGuides` |
-| 资源检索 | `resources` |
-| 多语言一致性规则 | `language` |
-| 环境与指令层级 | `environment` |
-| 运行模式协调 | `runtimeCoordination` |
+| 功能 | 配置字段 | 快捷组 |
+| --- | --- | --- |
+| 通用交付 | `delivery` | 通用 |
+| 目标与输入数据 | `targets` | 通用 |
+| 软件逆向与补丁 | `reverseEngineering` | 专项 |
+| 网络安全 | `networkSecurity` | 专项 |
+| 虚构创作 | `fiction` | 专项 |
+| 技术与实验指南 | `technicalGuides` | 专项 |
+| 资源检索 | `resources` | 专项 |
+| 多语言一致性规则 | `language` | 辅助 |
+| 环境与指令层级 | `environment` | 辅助 |
+| 运行模式协调 | `runtimeCoordination` | 辅助 |
 
-“开启全部 / 开启通用 / 开启辅助”通过原生 Settings 一次原子修改完成，仅开启指定组，保留总开关和其他模块选择。
-`language` 是作者正文中的语言一致性规则开关，不是提示词语言选择。
-关闭的模块正文不进入下一次系统提示词；全部模块关闭或总开关关闭时恢复原生提示词。
-运行模式协调开关同时控制插件附加的 Plan、PTC 和结构化报告说明；原生工具协议和审批条件始终保留。
+「开启全部 / 开启通用 / 开启辅助」将相应组的字段原子设为 `true`，保留总开关和其余模块当前值；按钮不会关闭其他已选模块。
+`language` 是正文中的语言一致性规则，不是提示词语言选择。缺少模块字段的旧配置默认全部开启，以保留原有正文。
 
-全选正文与作者 `0.2.3` 的 `EXECUTION_MODE_BLOCK` 逐字一致：**10,246 字符，10,418 UTF-8 字节**。
-只保留通用交付时为 **1,967 字符**，减少 **8,279 字符（80.8%）**。
-真实宿主 Standard 模式的完整插件增量由 **10,418** 降至 **2,139 字符**。
-以上均不是计费 token 统计。
+关闭模块后，其正文不进入后续系统提示词。全部模块或总开关关闭时使用宿主原文。`runtimeCoordination` 同时控制插件附加的 Plan、PTC 和结构化报告说明，原生工具协议与审批条件继续生效。
 
-## 指纹、校验和预览
+## 正文用量与指纹
 
-面板显示所选模块正文 SHA-256 的前 16 位。全选指纹为 `69d74c40bede59b2`；完整 SHA-256 为
-`69d74c40bede59b272c7a9f6e2b680cf151c603b9c6c9f818161cf1d693e7c61`。
-该值标识所选正文；完整预览还包括各模式原生段落和运行附注，因此不是整份请求的 hash。
+Upstream 0.2.4 没有修改 0.2.3 的 `EXECUTION_MODE_BLOCK`。全选正文为 **10,246 字符 / 10,418 UTF-8 字节**；仅开启 `delivery` 为 **1,967 字符**，正文字符数减少约 **80.8%**。这是静态正文统计，不是计费 token 或整份模型请求的统计。
 
-每次组装均检查原生锚点；不匹配时返回该宿主原有提示词，并在状态中报告失败原因。
-“重新校验”清理校验结果和预览后重新探测；“刷新”重新读取状态并更新已展开的预览。
-迟到的旧预览不能覆盖新选择；每次预览的正文和指纹使用同一份模块快照。操作等待期间禁止重复提交，多个重叠状态请求全部结束后才解除等待状态。
+所选模块正文 SHA-256 的前 16 位显示在面板中。全选指纹为 `69d74c40bede59b2`，完整 hash 为：
 
-Minimal complete persona 随空白会话预设切换安装或释放。自定义 Minimal persona 保留调用方原文和附加系统规则，使用组装路径追加正文，不与调用方注册争用。结构化 Minimal 检查显式传入 `context.agent`，保留原生报告工具指令。
-主会话实时预览与子代理隔离；Minimal 的预览使用静态预设来源，不把预测字符串标为实时请求。
+```text
+69d74c40bede59b272c7a9f6e2b680cf151c603b9c6c9f818161cf1d693e7c61
+```
 
-卡片通过官方 Connection 的 `/api/dsh-unrestricted/status`、`recheck`、`preview` 精确 POST 路由读取宿主状态。
-Web 与桌面使用同一通道，由宿主现有鉴权与 owner Peer 检查保护；本插件不再覆盖 Connection 的依赖声明。
+完整预览还包含原生协议、环境和模式附注，正文指纹不表示完整请求的 hash。正文与指纹来自同一份配置快照；迟到的旧预览不会覆盖更新的选择。
 
-## 本地构建和验证
+## 兼容与原样恢复
+
+每次组装检查原生锚点；不匹配时保留宿主原文，并在状态中报告原因。重新校验会清理旧结果再探测；刷新会读取状态。重叠请求全部结束后才解除等待状态。
+
+Minimal 自定义 persona 保留调用方的角色正文与额外系统规则，预设切换和代理释放会清理跟踪状态。结构化工具读取显式使用目标 `context.agent`，保留官方报告指引。主会话与子代理的预览相互隔离。
+
+关闭只恢复后续提示词组装，不删除或改写已有会话历史。
+
+## 桌面与 Web 状态通道
+
+卡片使用公开 `connection.fetch.register` 的三个精确 POST 路由：
+
+- `/api/dsh-unrestricted/status`
+- `/api/dsh-unrestricted/recheck`
+- `/api/dsh-unrestricted/preview`
+
+客户端使用官方 `connection.rpc.call('/api', 'dsh-unrestricted/<method>', payload)`。宿主负责认证、Host/Origin 与 owner Peer 检查；插件校验官方 envelope、method 和 rpcId，不覆盖 Connection provider，不注册旧私有通道，不做失败回退。设置修改仍通过原生 Settings。
+
+## 构建与版本验证
 
 ```sh
 npm ci --ignore-scripts
@@ -56,19 +63,8 @@ npm run typecheck
 npm run build
 ```
 
-开发依赖采用当前官方 DSH `0.2.1-rc.2` SDK。本轮使用本机 Desktop `0.2.1-rc.2` 导出的原生组件和临时 `DSH_HOME`，
-验证原生 Settings 持久化、四预设组装、空白会话切换、Plan、子代理、真实认证 HTTP RPC、逐模块关闭、hash 及原样回滚。
-`tools/verify-rosterless.mjs` 另外验证无预设注册表的原生 base 组合；它不是完整 CLI headless 场景验收。
+开发 SDK 目标为 DSH `0.2.1-rc.2`。本轮 0.3.0 的隔离验证状态单独记录于[维护说明](./docs/MAINTENANCE.md#验证记录)；旧版 `0.2.3-modular.2` 的原生与 Desktop 验收属于历史记录。
 
-本轮没有模型请求，没有验证回答质量或计费 token；没有操作正式 Desktop 界面、正式 profile 或现有会话。
+`tools/verify-installed.mjs` 使用临时 profile 组装提示词及调用认证 API；`tools/verify-rosterless.mjs` 验证无预设注册表的原生组合。按其参数选择隔离运行目录，不指向正在使用的正式 profile。
 
-## 安装本地包
-
-本版使用 PR #6 的 `feature/modular-prompt-switches` 分支；fork 的远程 `master` 不代表当前结果。可使用审阅后构建的本地 tarball：
-
-```sh
-"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.2.3-modular.2.tgz" --ignore-scripts
-```
-
-本轮没有执行这条正式安装命令。上游比较、PR 状态和保留模块拆分的依据见 [比较记录](./docs/upstream-0.2.3-review.md)。
+安装入口与 profile 示例见 [README](./README.md#安装与更新)。正式 profile 热更新需先确认空闲窗口；热更新及临时会话验收按对应提交和包 SHA-256 另行记录。

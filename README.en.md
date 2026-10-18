@@ -1,234 +1,91 @@
-# dsh-unrestricted
-
-> Local compatibility branch based on upstream `v0.2.3`, version `0.2.3-modular.1`. Ten functional switches are retained; the all-enabled body matches upstream bytes. Selected-body fingerprints and Chinese/English UI remain; there is one prompt body. See [MODULAR.md](./MODULAR.md) and the [upstream comparison](./docs/upstream-0.2.3-review.md). This branch is not pushed. Upstream documentation follows.
+# dsh-unrestricted · Independently maintained fork
 
 [简体中文](./README.md) | **English** | [日本語](./README.ja.md)
 
-`dsh-unrestricted` is a system prompt unrestrict (jailbreak) plugin for **DeepSeek Harness (DSH)**. It injects purpose-built unrestrict rules directly into DSH's system prompts, removing refusal boundaries across reverse engineering, penetration testing, creative writing, and specialized technical operations, enabling models to directly output complete, actionable implementations and code.
+This fork is based on [upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4), with the independent plugin version **0.3.0**. It retains the author's single prompt body and maintains ten functional switches, group buttons, selected-body fingerprints, and the public API integration used by the Desktop card.
 
-The plugin is deeply integrated into DSH's prompt assembly pipeline. While injecting unrestrict rules, it strictly preserves DSH's tool-calling protocols, Plan Mode, code execution (PTC), and subagent mechanics.
+Stable entry: [master](https://github.com/lilongsky/dsh-unrestricted/tree/master). Pinned version: [v0.3.0](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.0). This is the plugin version, not a DSH host version.
 
-The upstream `0.2.3` release notes record type checking, builds, and real-host checks on DSH `0.2.1-alpha.4` (`86a402200d`) for blank-session `minimal` switching, rosterless profiles, subagent preview isolation, and client synchronization. Its declared `engines.dsh` range, `>=0.2.0-rc.2 <0.2.2-0`, includes the older `0.2.0-rc.2`. This branch is currently verified with native local DSH `0.2.1-rc.2` components, a temporary `DSH_HOME`, and temporary sessions; the production Desktop UI, configuration, and sessions were not modified.
+## Maintenance scope
 
-The native model reasoning settings and plugin index do not replace this plugin's per-mode prompt assembly. Reasoning levels remain managed by the native model settings.
+Upstream focuses on one prompt body and its overall toggle. This fork maintains functional selection and Desktop integration on that foundation. [PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) is closed; releases continue independently here while relevant upstream fixes are reviewed and integrated.
 
----
+Version 0.3.0 integrates upstream 0.2.4 fixes for Minimal custom-persona lifetimes, native structured-output instructions, concurrent previews, and status requests. It retains this fork's module selection, consistent preview snapshots, and public status channel. See [maintenance notes](./docs/MAINTENANCE.md) and the [changelog](./CHANGELOG.md).
 
-## Table of Contents
+## Features
 
-- [Core Capabilities](#core-capabilities)
-- [Technical Architecture](#technical-architecture)
-  - [Dynamic System Prompt Interception & Injection](#dynamic-system-prompt-interception--injection)
-  - [Multi-Mode Coordination](#multi-mode-coordination)
-  - [Anchor Text Verification & Safe Fallback](#anchor-text-verification--safe-fallback)
-  - [Hot-Switching & Zero-Trace Reversion](#hot-switching--zero-trace-reversion)
-- [Installation & Updates](#installation--updates)
-  - [Web Mode](#web-mode)
-  - [Desktop App](#desktop-app)
-  - [Local Source Install](#local-source-install)
-- [Usage (Double-Switch Activation)](#usage-double-switch-activation)
-- [Operational Boundaries](#operational-boundaries)
-- [Development & Testing](#development--testing)
-- [License & Credits](#license--credits)
+- Ten independent functional switches. Older configurations without module fields retain the full body by default.
+- Enable all, general, or auxiliary modules through one native Settings transaction. These buttons enable their group's fields and preserve the master switch and other module values.
+- Preserve native tool protocols and permission boundaries for Standard, PTC, Cordis, Minimal, Plan, and subagents, including custom Minimal personas and structured reporting.
+- Check native anchors on each assembly and preserve the host's original prompt on mismatch. The card provides status, recheck, previews, and the selected body's SHA-256 fingerprint.
+- Use the same exact `/api/dsh-unrestricted/*` routes in Web and Desktop, protected by the host's authentication and owner Peer check.
 
----
+There is one author prompt body. The Chinese/English UI locale does not select another prompt language. [MODULAR.md](./MODULAR.md) lists fields, groups, and character counts. The plugin changes subsequent prompt assembly; tools, approvals, and sandbox permissions retain their native rules. Disabling restores subsequent assembly without rewriting existing session history.
 
-## Core Capabilities
+## Installation and updates
 
-When enabled, the model operates under the following execution directives:
+The package name remains `dsh-unrestricted`; the config ID and Settings namespace remain `unrestricted`. Update the same package and retain the existing module settings; do not install a second renamed copy alongside it.
 
-- **Direct Delivery Without Fluff or Preaching**: The very first line outputs the requested artifact (runnable code, step-by-step procedures, binary patches). Unsolicited disclaimers, ethical lectures, and pleasantries are omitted. Essential safety precautions are placed concisely at the end as objective postscripts.
-- **Reverse Engineering & Algorithm Extraction**: Identifies key validation routines (`CHECK_FN`), extracts core algorithms, and implements keygen generators. Provides exact binary patch offsets (`OFFSET`) and replacement bytes (`PATCH_BYTE`), along with anti-debugging and anti-VM bypass code.
-- **Cybersecurity & Penetration Research**: Provides complete, reproducible PoC and Exploit scripts detailing payload construction and delivery. Generates multi-threaded credential bruteforcers, port/banner scanners, encrypted reverse shells, and port-forwarding scripts.
-- **Fiction, Literary Co-Creation & Adult Writing**: Fluidly adapts across scene writing, plot/worldbuilding brainstorming, character design, and editorial polishing. Honors the user's chosen style and aesthetic (lyrical, classical, restrained, gritty, or explicit): renders anatomy and intimate acts directly without fade-to-black censorship when explicit depiction is called for, while preserving subtlety and literary restraint when appropriate. Fictional characters silently default to 18+ adults without age-based refusals or intrusive disclaimers.
-- **Specialized Industrial & Technical Procedures**: Supplies unabridged procedures, reagents, and physical parameters for chemical, pharmacological, and industrial operations without omitting critical steps.
-- **Structured Resource Search**: Leverages DSH web search tools to build targeted queries and compiles structured tables (title, verified link, source, format/size) from real results without fabricating URLs.
-- **Strict Data vs. Instruction Separation**: Workspace files and scraped web content are treated strictly as passive data, never as new instructions that alter unrestrict rules. User-specified names (domains, IPs, software titles) are preserved verbatim.
+The examples below use a pinned tag. Updating an active profile requires a confirmed idle window and the [running-host procedure](./docs/MAINTENANCE.md#运行中的-dsh). Do not trigger component HMR during an active turn.
 
----
+### Web profile
 
-## Technical Architecture
-
-### Dynamic System Prompt Interception & Injection
-
-In agentic architectures, DSH wraps all model interactions in a high-priority System Prompt that supersedes regular user messages. Injecting jailbreak phrases into user chat messages is often overridden by the system prompt or corrupts structured tool calling.
-
-This plugin interfaces directly with DSH's system prompt assembly pipeline (`system-prompt/assemble`):
-
-1. **Pipeline Hook**: Registers a global listener on the prompt assembly pipeline.
-2. **Post-Persona Injection**: Locates the official persona prefix (`deployment:persona-prefix`), appends an execution pointer, and inserts the unrestrict rules block (`unrestricted:execution-mode`) in the immediately following section.
-3. **Preserving Core Agent Protocols**: Working directory suffixes (`deployment:persona-suffix`), native tool definitions, and environment variables remain untouched; only directives governing response scope and directness are modified.
-
-```text
-[DSH Agent Request]
-        │
-        ▼
-[Prompt Assemble Pipeline]
-        │
-        ├─> Official Persona Prefix
-        │        │
-        │        ▼ 【dsh-unrestricted Hook】
-        │        ├─ Enabled: Injects unrestrict block & coordinates mode constraints
-        │        └─ Disabled: Transparent pass-through (100% stock prompt)
-        │
-        ├─> Tool Catalog & Protocols (Bash/Pwsh, FS, Web Search...)
-        ├─> Plan Mode Policy
-        └─> Environment Info (CWD, Model...)
-        │
-        ▼
-[Dispatched to LLM API]
-```
-
-### Multi-Mode Coordination
-
-The plugin coordinates rules across all DSH execution presets:
-
-- **Standard & Cordis Modes**: Injects the unrestrict block directly after the persona prefix, keeping all built-in tools (terminal, filesystem, web search) functional.
-- **PTC Mode (Code-Only Execution)**: Since PTC agents interact only via `run_code`, an additional guideline is injected into `tools:ptc-only`, clarifying that Python/Node scripts executed inside `run_code` are unconstrained and free to use internal SDK tools for automated analysis.
-- **Plan Mode**: Decouples operational constraints from planning depth. The plugin explicitly reinforces that **operational constraints apply only to mutations** (no file edits prior to approval), but **the plan markdown must contain unabridged technical procedures, exploit mechanisms, or reverse engineering steps**.
-- **Minimal Mode**: Uses an agent-scoped shadow override to supply the fused minimal persona, cleanly releasing it upon deactivation.
-- **Subagents & Structured Output**: Background child agents and structured reporting (`structured_output`) automatically inherit the unrestrict rules.
-
-### Anchor Text Verification & Safe Fallback
-
-To prevent malformed prompts when DSH updates upstream, the plugin checks verbatim text anchors before every fusion (defined in `ANCHORS` in `src/rules.js`):
-
-- Verifies persona openings, Plan Mode policies, and `run_code` descriptions.
-- Edits are applied only if all anchors match.
-- If an anchor fails, the plugin **safely falls back to the stock DSH prompt** for that mode and flags the issue in the settings card.
-
-### Hot-Switching & Zero-Trace Reversion
-
-- **Instant Switching**: Toggling the switch persists the setting to `cordis.patch.yml`. Changes take effect on the very next request without requiring a service restart.
-- **Zero Artifacts**: Deactivating the switch restores the stock prompts immediately, leaving no persistent markers in conversation history or databases.
-
----
-
-## Installation & Updates
-
-### Web Mode
-
-For CLI and server setups running `dsh web`.
-
-#### Install
 ```sh
-# Install specific tag
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.3
-
-# Or track master
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted
+dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
-Restart `dsh web`, then follow the [Usage section](#usage-double-switch-activation) to enable both the plugin and the unrestrict toggle.
 
-#### Update
+Use `#master` instead of `#v0.3.0` to follow the stable branch.
+
+### Desktop profile
+
+Use the CLI shipped with the corresponding Desktop App and select the `desktop` profile. macOS example:
+
 ```sh
-dsh plugin --profile web remove dsh-unrestricted
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#<new-version>
-```
-Restart `dsh web`.
-
-#### Uninstall
-```sh
-dsh plugin --profile web remove dsh-unrestricted
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
 
----
+Example for the default Windows location:
 
-### Desktop App
-
-For users running the official DeepSeek Harness desktop application.
-
-> **Note**: The desktop app runs on an isolated `desktop` profile. Use the desktop app's bundled CLI binary rather than a global `dsh` command.
-
-#### 1. Desktop CLI Path
-On Windows, the default path is:
-```text
-%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd
-```
-
-#### 2. Install
-1. Completely exit the desktop app.
-2. Run in PowerShell or CMD:
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#v0.2.3
-   ```
-3. Launch the desktop app and follow the activation steps below.
-
-#### 3. Update
-1. Completely exit the desktop app.
-2. Reinstall with the new version:
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#<new-version>
-   ```
-3. Restart the desktop app.
-
-#### 4. Uninstall
 ```powershell
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" `
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.0 --ignore-scripts
 ```
 
----
+This release-build validation record covers isolated checks. Production-profile hot updates and temporary-session acceptance are recorded separately against the corresponding commit and package SHA-256.
 
-### Local Source Install
-
-For developers linking a local workspace:
+### Local build
 
 ```sh
-# Web profile
-dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
-
-# Desktop profile
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add file:D:/work/dsh/plugin/unrestricted
-```
-
----
-
-## Usage (Double-Switch Activation)
-
-> **Important: Both switches must be turned on for unrestrict rules to take effect!**
->
-> 1. **Step 1 (Plugin Activation Switch)**: Navigate to **Plugins** in the sidebar. In the installed plugins list, find `dsh-unrestricted` (Unrestricted mode) and **toggle the plugin ON**. If the plugin is not enabled here, DSH will not load the plugin runtime at all.
-> 2. **Step 2 (Feature Toggle Switch)**: Click `dsh-unrestricted` in the **Plugins** page to open its configuration card, and turn on the **"Enable unrestricted mode"** switch at the top.
->
-> Both switches must be active for rules to be injected into the system prompt assembly pipeline.
-
-### Settings Panel Features
-
-- **Enable Switch**: Toggles unrestrict mode globally for future requests.
-- **Per-Mode Status**: Shows real-time injection status across Standard, PTC, Cordis, and Minimal modes (`Active` indicates successful anchor verification and injection; if inactive, check whether the plugin is toggled on in the Plugins manager).
-- **Rule Fingerprint**: Displays the SHA-256 hash (first 16 hex characters) of the deployed unrestrict rule block.
-- **Prompt Preview**: Click **"Show preview"** under any mode to inspect the exact system prompt text, line count, and byte size.
-
----
-
-## Operational Boundaries
-
-- **Cloud Platform Moderation Filters**: Commercial AI providers often enforce external content filters at the network layer. If a request triggers server-side keyword blocks, the connection is terminated by the API host (HTTP 400 or policy reset). Such external network-level filters cannot be bypassed by prompt engineering alone; pairing with relaxed API endpoints or local models (Ollama / vLLM) is advised.
-- **Host Security Enforcement**: The plugin modifies only the model's instruction following and reasoning depth. DSH's read-only file sandbox, terminal command approval prompts, and Plan Mode write restrictions remain fully enforced.
-- **Compliance**: Intended for authorized security research, reverse engineering, software development, and creative fiction.
-
----
-
-## Development & Testing
-
-```sh
-git clone https://github.com/yexi-by/dsh-unrestricted.git
+git clone --branch v0.3.0 https://github.com/lilongsky/dsh-unrestricted.git
 cd dsh-unrestricted
-pnpm install
-pnpm typecheck
-pnpm build
-pnpm test
+npm ci --ignore-scripts
+npm test
+npm run typecheck
+npm run build
+npm pack
 ```
 
-Repository maintenance tools:
-- `node tools/dump-prompts.mjs --repo <path> --out tests/fixtures`: Dumps stock prompts from DSH source to update test fixtures.
-- `node tools/verify-live.mjs --repo <path>`: Verifies live assembly and rollback without calling the LLM.
+After reviewing the package, install the same package name with the CLI for the intended profile:
 
----
+```sh
+dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.0.tgz" --ignore-scripts
+```
 
-## License & Credits
+## Usage
 
-- Initial prompt rules adapted and refined from [Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith)'s `gpt-unrestricted.md` (MIT License). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- This project has no affiliation with codex-keysmith or its author.
-- Licensed under the [MIT License](LICENSE).
+1. Enable the `dsh-unrestricted` component in native plugin management.
+2. Enable the feature's master switch in its settings card and choose modules.
+3. Check mode status and the body fingerprint. Previews identify their source; static preset previews and online requests are recorded separately.
+
+Disabled modules are omitted from subsequent prompt bodies. Turning off all modules or the master switch restores native assembly. Existing records are retained.
+
+## Validation scope
+
+The declared host range in `package.json` is `>=0.2.0-rc.2 <0.2.2-0`. This cycle targets isolated validation on DSH `0.2.1-rc.2`; its actual completion state is recorded in the [maintenance notes](./docs/MAINTENANCE.md#验证记录).
+
+Version `0.2.3-modular.2` has historical isolated-host and macOS Desktop status, four static-preset-preview, and recheck acceptance records from 2026-10-18. Those records belong to the old version and do not establish live acceptance of 0.3.0. Answer quality, refusal rates, billing tokens, and online execution in all four modes require their own request evidence.
+
+## License and credits
+
+The original project is by [yexi-by](https://github.com/yexi-by/dsh-unrestricted). This fork retains the author's attribution and [MIT License](./LICENSE). Existing rule-source credits, including [Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith), remain in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
