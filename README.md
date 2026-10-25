@@ -6,7 +6,7 @@
 
 插件保持轻量：通过现有开关整体启停破限规则，保留 DSH 原有的界面布局、工具调用协议、计划模式（Plan Mode）、代码执行（PTC）以及子代理运行逻辑。
 
-`0.2.4` 修复 Minimal 自定义角色子代理的提示词注册冲突、结构化子代理遗漏官方输出指引，以及设置页并发请求导致的旧预览覆盖和忙碌状态提前解除。现有提示词规则与开关保持不变。支持 DSH `0.2.1-rc.3`（`22ddee3792`），`engines.dsh` 为 `>=0.2.0-rc.2 <0.2.2-0`；保留桌面版 `0.2.0-rc.2` 的安装支持，本轮桌面端仅同步安装副本，不操作或验证桌面界面。
+`0.2.4` 修复 Minimal 自定义角色子代理的提示词注册冲突、结构化子代理遗漏官方输出指引，以及设置页并发请求导致的旧预览覆盖和忙碌状态提前解除。现有提示词规则与开关保持不变。支持 DSH `0.2.1-rc.3`（`22ddee3792`），`engines.dsh` 为 `>=0.2.0-rc.2 <0.2.2-0`；保留桌面版 `0.2.0-rc.2` 的安装支持。桌面端支持 Windows 与 macOS。
 
 官方新增的自定义模型推理等级与插件索引不替代本插件的按模式提示词组装功能；本轮保留插件。模型推理等级统一由官方模型设置管理。
 
@@ -134,36 +134,65 @@ dsh plugin --profile web remove dsh-unrestricted
 
 ### 桌面端（Desktop App）
 
-适用于 DeepSeek Harness 官方桌面客户端。
+适用于 Windows 与 macOS 上的 DeepSeek Harness 官方桌面客户端。
 
 > **注意**：桌面端使用独立的 `desktop` profile，不能使用全局 `dsh` 命令，必须调用桌面端自带的 CLI 工具执行配置。
 
 #### 1. 桌面端 CLI 路径
-以 Windows 为例，默认路径为：
+Windows 默认路径：
 ```text
 %LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd
 ```
 
+macOS 默认路径：
+```text
+/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh
+```
+
+如果应用安装在其他位置，请将命令中的应用路径替换为实际路径。
+
 #### 2. 安装步骤
 1. 完全退出正在运行的桌面客户端。
-2. 打开 PowerShell 或 CMD，执行安装命令：
+2. 根据系统在终端执行安装命令。
+
+   **Windows（PowerShell）：**
    ```powershell
    & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#v0.2.4
+   ```
+
+   **macOS（终端）：**
+   ```sh
+   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#v0.2.4"
    ```
 3. 启动桌面客户端，按下方说明启用插件与功能开关。
 
 #### 3. 更新步骤
 1. 完全退出桌面客户端。
 2. 执行重新安装命令：
+
+   **Windows（PowerShell）：**
    ```powershell
    & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
    & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#目标版本号
    ```
+
+   **macOS（终端）：**
+   ```sh
+   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
+   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#目标版本号"
+   ```
 3. 重新打开桌面客户端。
 
 #### 4. 卸载步骤
+
+**Windows（PowerShell）：**
 ```powershell
 & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
+```
+
+**macOS（终端）：**
+```sh
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
 ```
 
 ---
