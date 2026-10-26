@@ -1,6 +1,6 @@
 {
   "name": "dsh-unrestricted",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Independently maintained modular prompt controls for DeepSeek Harness, based on upstream 0.2.4 with public Desktop API integration",
   "license": "MIT",

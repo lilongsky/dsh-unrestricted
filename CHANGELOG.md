@@ -2,6 +2,16 @@
 
 本 fork 独立编号；包名 `dsh-unrestricted`、配置 ID / Settings namespace `unrestricted` 保持不变。
 
+## 0.3.1 — 2026-10-26
+
+跟进 upstream `master` 至 [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839)，稳定入口为本 fork 的 `master` / `v0.3.1`。
+
+- 合并上游 rc.3 兼容性说明和 macOS 桌面安装示例；三语文档同步安装、同名包升级、卸载与非默认应用路径说明。
+- 在实际 macOS Desktop 自带的 DSH `0.2.1-rc.3` 上完成 220 项原生隔离检查；73 项单测、类型检查与客户端构建通过。
+- 保留模块、正文指纹、公共 API 和原有运行代码；开发依赖及宿主版本声明不变。本次上游提交仅修改文档。
+
+本轮未更新正式 profile、操作 Desktop UI 或发送模型请求。验证范围见[维护说明](./docs/MAINTENANCE.md#验证记录)。
+
 ## 0.3.0 — 2026-10-19
 
 基于 upstream `v0.2.4`（`7beb2d2546599723f3b2958705d1da3b0bbd5e70`），稳定入口为本 fork 的 `master` / `v0.3.0`。
