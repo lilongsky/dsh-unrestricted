@@ -32,7 +32,6 @@
  */
 import z from '@deepseek-ai/schemastery'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
-import { createScope } from '@deepseek-ai/dsh-scope'
 import {
   ANCHORS, PRESETS, PRESET_RULES, contractFingerprint, fuseSections, fusedMinimalPrompt, renderPreview,
 } from './rules.js'
@@ -90,8 +89,8 @@ export function apply(ctx, config) {
   }
 
   /**
-   * Read the standing assembly of a preset using the registry's scope lease
-   * (or a temporary mounted scope fallback). In rosterless profiles, assemble
+   * Read the standing assembly of a preset using the registry's scope lease.
+   * In rosterless profiles, assemble
    * the global host layer directly.
    */
   async function presetAssembly(presetId) {
@@ -101,21 +100,11 @@ export function apply(ctx, config) {
     if (presets === undefined) {
       return await ctx.systemPrompt.assemble({})
     }
-    if (typeof presets.acquireScope === 'function') {
-      const lease = await presets.acquireScope(presetId)
-      try {
-        return await ctx.systemPrompt.assemble({ scope: lease.key })
-      } finally {
-        await lease[Symbol.asyncDispose]()
-      }
-    }
-    const key = {}
-    const scope = createScope(ctx, key)
+    const lease = await presets.acquireScope(presetId)
     try {
-      await presets.mount(scope.ctx, presetId)
-      return await ctx.systemPrompt.assemble({ scope: key })
+      return await ctx.systemPrompt.assemble({ scope: lease.key })
     } finally {
-      await scope.dispose()
+      await lease[Symbol.asyncDispose]()
     }
   }
 

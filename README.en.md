@@ -6,7 +6,7 @@
 
 The plugin stays lightweight: the existing switches enable or disable the rules as a whole, preserving DSH's interface layout, tool-calling protocols, Plan Mode, code execution (PTC), and subagent mechanics.
 
-`0.2.4` fixes prompt registration conflicts in Minimal subagents with custom personas, missing native structured-output instructions, and overlapping settings requests that could overwrite a newer preview or clear the busy state too early. The prompt rules and existing switches remain unchanged. It supports DSH `0.2.1-rc.2` (`687f282e86`) with `engines.dsh` set to `>=0.2.0-rc.2 <0.2.2-0`, retaining installation support for desktop `0.2.0-rc.2`. The desktop app is supported on Windows and macOS.
+`0.2.5` fixes prompt registration conflicts in Minimal subagents with custom personas, missing native structured-output instructions, and overlapping settings requests that could overwrite a newer preview or clear the busy state too early. The prompt rules and existing switches remain unchanged. It supports DSH `0.2.2-alpha.2` (`f3803c9697`) with `engines.dsh` set to `>=0.2.2-alpha.2 <0.2.3-0`. Only the current DSH version is supported; legacy compatibility is removed.
 
 The native model reasoning settings and plugin index do not replace this plugin's per-mode prompt assembly. Reasoning levels remain managed by the native model settings.
 
@@ -22,7 +22,6 @@ The native model reasoning settings and plugin index do not replace this plugin'
   - [Hot-Switching & Zero-Trace Reversion](#hot-switching--zero-trace-reversion)
 - [Installation & Updates](#installation--updates)
   - [Web Mode](#web-mode)
-  - [Desktop App](#desktop-app)
   - [Local Source Install](#local-source-install)
 - [Usage (Double-Switch Activation)](#usage-double-switch-activation)
 - [Operational Boundaries](#operational-boundaries)
@@ -111,7 +110,7 @@ For CLI and server setups running `dsh web`.
 #### Install
 ```sh
 # Install specific tag
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.4
+dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.5
 
 # Or track master
 dsh plugin --profile web add github:yexi-by/dsh-unrestricted
@@ -132,71 +131,6 @@ dsh plugin --profile web remove dsh-unrestricted
 
 ---
 
-### Desktop App
-
-For users running the official DeepSeek Harness desktop application on Windows or macOS.
-
-> **Note**: The desktop app runs on an isolated `desktop` profile. Use the desktop app's bundled CLI binary rather than a global `dsh` command.
-
-#### 1. Desktop CLI Path
-On Windows, the default path is:
-```text
-%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd
-```
-
-On macOS, the default path is:
-```text
-/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh
-```
-
-If the app is installed elsewhere, replace the application path in the commands with its actual location.
-
-#### 2. Install
-1. Completely exit the desktop app.
-2. Run the command for your operating system in a terminal.
-
-   **Windows (PowerShell):**
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#v0.2.4
-   ```
-
-   **macOS (Terminal):**
-   ```sh
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#v0.2.4"
-   ```
-3. Launch the desktop app and follow the activation steps below.
-
-#### 3. Update
-1. Completely exit the desktop app.
-2. Reinstall with the new version:
-
-   **Windows (PowerShell):**
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#<new-version>
-   ```
-
-   **macOS (Terminal):**
-   ```sh
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#<new-version>"
-   ```
-3. Restart the desktop app.
-
-#### 4. Uninstall
-
-**Windows (PowerShell):**
-```powershell
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-```
-
-**macOS (Terminal):**
-```sh
-"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
-```
-
----
-
 ### Local Source Install
 
 For developers linking a local workspace:
@@ -205,8 +139,6 @@ For developers linking a local workspace:
 # Web profile
 dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
 
-# Desktop profile
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add file:D:/work/dsh/plugin/unrestricted
 ```
 
 ---

@@ -6,7 +6,7 @@
 
 プラグインは軽量な構成を維持し、既存のスイッチでルール全体を有効・無効にします。DSH 本来の画面レイアウト、ツール呼び出しプロトコル、計画モード（Plan Mode）、コード実行（PTC）、サブエージェントの実行ロジックを維持します。
 
-`0.2.4` は、カスタムペルソナを持つ Minimal サブエージェントのプロンプト登録競合、公式の構造化出力指示の欠落、設定画面の並行リクエストによる古いプレビューの上書きや処理中状態の早期解除を修正します。既存のプロンプトルールとスイッチは変更しません。DSH `0.2.1-rc.2`（`687f282e86`）に対応し、`engines.dsh` は `>=0.2.0-rc.2 <0.2.2-0` です。デスクトップ版 `0.2.0-rc.2` へのインストールも引き続きサポートします。デスクトップ版は Windows と macOS に対応しています。
+`0.2.5` は、カスタムペルソナを持つ Minimal サブエージェントのプロンプト登録競合、公式の構造化出力指示の欠落、設定画面の並行リクエストによる古いプレビューの上書きや処理中状態の早期解除を修正します。既存のプロンプトルールとスイッチは変更しません。DSH `0.2.2-alpha.2`（`f3803c9697`）に対応し、`engines.dsh` は `>=0.2.2-alpha.2 <0.2.3-0` です。旧バージョン向けの互換処理は削除しました。
 
 公式の推論レベル設定とプラグイン索引は、本プラグインのモード別プロンプト組み立てを代替しません。推論レベルは公式のモデル設定で管理します。
 
@@ -22,7 +22,6 @@
   - [即時適用と痕跡ゼロのロールバック](#即時適用と痕跡ゼロのロールバック)
 - [インストール・更新](#インストール更新)
   - [Web 版](#web-版)
-  - [デスクトップ版](#デスクトップ版)
   - [ローカルソースインストール](#ローカルソースインストール)
 - [使用方法（二重スイッチの確認）](#使用方法二重スイッチの確認)
 - [動作境界と注意事項](#動作境界と注意事項)
@@ -109,7 +108,7 @@ CLI またはサーバー環境で `dsh web` を実行している場合。
 #### インストール
 ```sh
 # 指定バージョンのインストール
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.4
+dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.5
 
 # または master 最新コードのインストール
 dsh plugin --profile web add github:yexi-by/dsh-unrestricted
@@ -130,71 +129,6 @@ dsh plugin --profile web remove dsh-unrestricted
 
 ---
 
-### デスクトップ版
-
-Windows または macOS の DeepSeek Harness 公式デスクトップアプリ環境。
-
-> **注意**：デスクトップ版は独立した `desktop` プロファイルを使用します。グローバルの `dsh` コマンドではなく、アプリ付属の CLI を指定して実行する必要があります。
-
-#### 1. デスクトップ版 CLI のパス
-Windows の標準パス：
-```text
-%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd
-```
-
-macOS の標準パス：
-```text
-/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh
-```
-
-アプリを別の場所にインストールした場合は、コマンド内のアプリのパスを実際の場所に置き換えてください。
-
-#### 2. インストール手順
-1. デスクトップアプリを完全に終了します。
-2. お使いの OS に対応するコマンドをターミナルで実行します。
-
-   **Windows（PowerShell）：**
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#v0.2.4
-   ```
-
-   **macOS（ターミナル）：**
-   ```sh
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#v0.2.4"
-   ```
-3. デスクトップアプリを起動し、下記の使用方法に従って設定を完了します。
-
-#### 3. アップデート手順
-1. デスクトップアプリを完全に終了します。
-2. アンインストールと再インストールを実行します：
-
-   **Windows（PowerShell）：**
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-   & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:yexi-by/dsh-unrestricted#新バージョン
-   ```
-
-   **macOS（ターミナル）：**
-   ```sh
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
-   "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add "github:yexi-by/dsh-unrestricted#新バージョン"
-   ```
-3. デスクトップアプリを再起動します。
-
-#### 4. アンインストール
-
-**Windows（PowerShell）：**
-```powershell
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-unrestricted
-```
-
-**macOS（ターミナル）：**
-```sh
-"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-unrestricted
-```
-
----
-
 ### ローカルソースインストール
 
 開発・デバッグ用：
@@ -203,8 +137,6 @@ macOS の標準パス：
 # Web 版
 dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
 
-# デスクトップ版
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add file:D:/work/dsh/plugin/unrestricted
 ```
 
 ---
