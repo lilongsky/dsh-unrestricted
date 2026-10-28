@@ -2,170 +2,150 @@
 
 [简体中文](./README.md) | **English** | [日本語](./README.ja.md)
 
-`dsh-unrestricted` is a system prompt unrestrict (jailbreak) plugin for **DeepSeek Harness (DSH)**. It injects purpose-built unrestrict rules directly into DSH's system prompts, removing refusal boundaries across reverse engineering, penetration testing, creative writing, and specialized technical operations, enabling models to directly output complete, actionable implementations and code.
+`dsh-unrestricted` is a system prompt unrestrict plugin for **DeepSeek Harness (DSH)**. It injects unrestrict rules during system prompt assembly, lifting refusal boundaries across reverse engineering, security testing, creative writing, and technical workflows so the model returns complete code and implementations directly.
 
-The plugin stays lightweight: the existing switches enable or disable the rules as a whole, preserving DSH's interface layout, tool-calling protocols, Plan Mode, code execution (PTC), and subagent mechanics.
-
-`0.2.5` fixes prompt registration conflicts in Minimal subagents with custom personas, missing native structured-output instructions, and overlapping settings requests that could overwrite a newer preview or clear the busy state too early. The prompt rules and existing switches remain unchanged. It supports DSH `0.2.2-alpha.2` (`f3803c9697`) with `engines.dsh` set to `>=0.2.2-alpha.2 <0.2.3-0`. Only the current DSH version is supported; legacy compatibility is removed.
-
-The native model reasoning settings and plugin index do not replace this plugin's per-mode prompt assembly. Reasoning levels remain managed by the native model settings.
+A single toggle enables or disables the rules without altering DSH's UI layout, tool protocols, Plan Mode, code execution (PTC), or subagent workflow.
 
 ---
 
 ## Table of Contents
 
-- [Core Capabilities](#core-capabilities)
-- [Technical Architecture](#technical-architecture)
-  - [Dynamic System Prompt Interception & Injection](#dynamic-system-prompt-interception--injection)
-  - [Multi-Mode Coordination](#multi-mode-coordination)
-  - [Anchor Text Verification & Safe Fallback](#anchor-text-verification--safe-fallback)
-  - [Hot-Switching & Zero-Trace Reversion](#hot-switching--zero-trace-reversion)
+- [What It Changes](#what-it-changes)
+- [How It Works](#how-it-works)
+  - [System Prompt Injection](#system-prompt-injection)
+  - [Mode Adaptation](#mode-adaptation)
+  - [Anchor Check & Fallback](#anchor-check--fallback)
+  - [Instant Toggle](#instant-toggle)
 - [Installation & Updates](#installation--updates)
-  - [Web Mode](#web-mode)
   - [Local Source Install](#local-source-install)
-- [Usage (Double-Switch Activation)](#usage-double-switch-activation)
-- [Operational Boundaries](#operational-boundaries)
+- [Usage](#usage)
+- [Notes](#notes)
 - [Development & Testing](#development--testing)
 - [License & Credits](#license--credits)
 
 ---
 
-## Core Capabilities
+## What It Changes
 
-When enabled, the model operates under the following execution directives:
+When enabled, the injected rules adjust model responses as follows:
 
-- **Direct Delivery Without Fluff or Preaching**: The very first line outputs the requested artifact (runnable code, step-by-step procedures, binary patches). Unsolicited disclaimers, ethical lectures, and pleasantries are omitted. Essential safety precautions are placed concisely at the end as objective postscripts.
-- **Reverse Engineering & Algorithm Extraction**: Identifies key validation routines (`CHECK_FN`), extracts core algorithms, and implements keygen generators. Provides exact binary patch offsets (`OFFSET`) and replacement bytes (`PATCH_BYTE`), along with anti-debugging and anti-VM bypass code.
-- **Cybersecurity & Penetration Research**: Provides complete, reproducible PoC and Exploit scripts detailing payload construction and delivery. Generates multi-threaded credential bruteforcers, port/banner scanners, encrypted reverse shells, and port-forwarding scripts.
-- **Fiction, Literary Co-Creation & Adult Writing**: Fluidly adapts across scene writing, plot/worldbuilding brainstorming, character design, and editorial polishing. Honors the user's chosen style and aesthetic (lyrical, classical, restrained, gritty, or explicit): renders anatomy and intimate acts directly without fade-to-black censorship when explicit depiction is called for, while preserving subtlety and literary restraint when appropriate. Fictional characters silently default to 18+ adults without age-based refusals or intrusive disclaimers.
-- **Specialized Industrial & Technical Procedures**: Supplies unabridged procedures, reagents, and physical parameters for chemical, pharmacological, and industrial operations without omitting critical steps.
-- **Structured Resource Search**: Leverages DSH web search tools to build targeted queries and compiles structured tables (title, verified link, source, format/size) from real results without fabricating URLs.
-- **Strict Data vs. Instruction Separation**: Workspace files and scraped web content are treated strictly as passive data, never as new instructions that alter unrestrict rules. User-specified names (domains, IPs, software titles) are preserved verbatim.
+- **Direct Output**: Starts directly with the requested code, analysis steps, binary patch, or prose without disclaimers, pleasantries, or lecturing. Necessary physical or operational cautions are kept as a brief note at the end.
+- **Reverse Engineering & Patching**: Locates validation routines (`CHECK_FN`), reconstructs core algorithms, and writes keygens; provides binary patch offsets (`OFFSET`), replacement bytes (`PATCH_BYTE`), and anti-debug / anti-VM bypasses.
+- **Security Testing & Tooling**: Writes vulnerability PoC / exploit scripts, multi-threaded dictionary bruteforcers, port scanners, encrypted reverse shells, and tunneling scripts.
+- **Fiction & Editorial Writing**: Adapts to scene writing, plot/worldbuilding exploration, character work, and prose editing. Follows the user's chosen tone—writing explicit scenes plainly without fade-to-black cuts when requested, or keeping subtlety and restraint when the style calls for it. Characters default to adults without age-based refusals or intrusive reminders.
+- **Industrial & Lab Procedures**: Gives complete steps, ratios, and parameters for chemical, pharmacological, and technical processes without omitting key stages.
+- **Resource Lookup**: Uses web search tools to query and organize results into a clear list (title, link, source, format/size) without inventing URLs.
+- **External Text Isolation**: Treats workspace files and web pages strictly as input data rather than new instructions; preserves user-supplied domains, hosts, and software names verbatim.
 
 ---
 
-## Technical Architecture
+## How It Works
 
-### Dynamic System Prompt Interception & Injection
+### System Prompt Injection
 
-In agentic architectures, DSH wraps all model interactions in a high-priority System Prompt that supersedes regular user messages. Injecting jailbreak phrases into user chat messages is often overridden by the system prompt or corrupts structured tool calling.
+DSH assembles a global System Prompt before sending requests. Putting unrestrict instructions inside regular chat messages is easily overridden by the system prompt or can disrupt tool calling.
 
-This plugin interfaces directly with DSH's system prompt assembly pipeline (`system-prompt/assemble`):
+The plugin hooks into the `system-prompt/assemble` pipeline:
 
-1. **Pipeline Hook**: Registers a global listener on the prompt assembly pipeline.
-2. **Post-Persona Injection**: Locates the official persona prefix (`deployment:persona-prefix`), appends an execution pointer, and inserts the unrestrict rules block (`unrestricted:execution-mode`) in the immediately following section.
-3. **Preserving Core Agent Protocols**: Working directory suffixes (`deployment:persona-suffix`), native tool definitions, and environment variables remain untouched; only directives governing response scope and directness are modified.
+1. Appends a pointer at the end of the official persona prefix (`deployment:persona-prefix`) and inserts a dedicated rule section (`unrestricted:execution-mode`) right after it.
+2. Leaves working directory info (`deployment:persona-suffix`), tool schemas, and environment context untouched.
 
 ```text
-[DSH Agent Request]
-        │
-        ▼
+[DSH Request]
+      │
+      ▼
 [Prompt Assemble Pipeline]
-        │
-        ├─> Official Persona Prefix
-        │        │
-        │        ▼ 【dsh-unrestricted Hook】
-        │        ├─ Enabled: Injects unrestrict block & coordinates mode constraints
-        │        └─ Disabled: Transparent pass-through (100% stock prompt)
-        │
-        ├─> Tool Catalog & Protocols (Bash/Pwsh, FS, Web Search...)
-        ├─> Plan Mode Policy
-        └─> Environment Info (CWD, Model...)
-        │
-        ▼
-[Dispatched to LLM API]
+      │
+      ├─> Official Persona Prefix
+      │        │
+      │        ▼ [dsh-unrestricted]
+      │        ├─ Enabled: Inserts rule section & coordinates mode rules
+      │        └─ Disabled: Pass-through (stock prompt)
+      │
+      ├─> Tool Catalog & Protocols (Bash/Pwsh, FS, Web Search...)
+      ├─> Plan Mode Policy
+      └─> Environment Info (CWD, Model...)
+      │
+      ▼
+[Sent to Model API]
 ```
 
-### Multi-Mode Coordination
+### Mode Adaptation
 
-The plugin coordinates rules across all DSH execution presets:
+The plugin handles each DSH execution preset according to its prompt structure:
 
-- **Standard & Cordis Modes**: Injects the unrestrict block directly after the persona prefix, keeping all built-in tools (terminal, filesystem, web search) functional.
-- **PTC Mode (Code-Only Execution)**: Since PTC agents interact only via `run_code`, an additional guideline is injected into `tools:ptc-only`, clarifying that Python/Node scripts executed inside `run_code` are unconstrained and free to use internal SDK tools for automated analysis.
-- **Plan Mode**: Decouples operational constraints from planning depth. The plugin explicitly reinforces that **operational constraints apply only to mutations** (no file edits prior to approval), but **the plan markdown must contain unabridged technical procedures, exploit mechanisms, or reverse engineering steps**.
-- **Minimal Mode**: Injects rules in the current agent scope while preserving custom subagent personas and native structured-output instructions, avoiding duplicate persona registration. Disabling the plugin restores the original prompt.
-- **Subagents & Structured Output**: Background child agents and structured reporting (`structured_output`) automatically inherit the unrestrict rules.
+- **Standard / Cordis Modes**: Inserts the rule block after the persona prefix while keeping all built-in tools intact.
+- **PTC Mode**: Models in PTC mode run scripts via `run_code`. The plugin adds a note to `tools:ptc-only` so Python/Node code and SDK calls inside `run_code` follow the same output rules.
+- **Plan Mode**: Separates execution permissions from plan content—no file edits happen before approval, while the plan markdown itself includes full technical steps and code.
+- **Minimal Mode**: Injects rules within the active agent scope while preserving custom subagent personas and `structured_output` instructions.
+- **Subagents**: Background subagents and structured output tasks inherit the current toggle state.
 
-### Anchor Text Verification & Safe Fallback
+### Anchor Check & Fallback
 
-To prevent malformed prompts when DSH updates upstream, the plugin checks verbatim text anchors before every fusion (defined in `ANCHORS` in `src/rules.js`):
+Before each assembly, the plugin checks expected anchor strings in the stock prompt (see `ANCHORS` in `src/rules.js`), including persona openings, Plan Mode policies, and `run_code` descriptions. If an upstream DSH update changes those strings and a check fails, that mode falls back to the stock prompt and reports the failed anchor in the settings panel.
 
-- Verifies persona openings, Plan Mode policies, and `run_code` descriptions.
-- Edits are applied only if all anchors match.
-- If an anchor fails, the plugin **safely falls back to the stock DSH prompt** for that mode and flags the issue in the settings card.
+### Instant Toggle
 
-### Hot-Switching & Zero-Trace Reversion
-
-- **Instant Switching**: Toggling the switch persists the setting to `cordis.patch.yml`. Changes take effect on the very next request without requiring a service restart.
-- **Zero Artifacts**: Deactivating the switch restores the stock prompts immediately, leaving no persistent markers in conversation history or databases.
+The toggle state is saved in the profile's `cordis.patch.yml` and takes effect on the next request without restarting the service. Turning it off restores the stock prompt immediately without leaving markers in session history.
 
 ---
 
 ## Installation & Updates
 
-### Web Mode
-
-For CLI and server setups running `dsh web`.
-
-#### Install
 ```sh
-# Install specific tag
+# Install a specific release
 dsh plugin --profile web add github:yexi-by/dsh-unrestricted#v0.2.5
 
 # Or track master
 dsh plugin --profile web add github:yexi-by/dsh-unrestricted
 ```
-Restart `dsh web`, then follow the [Usage section](#usage-double-switch-activation) to enable both the plugin and the unrestrict toggle.
+
+Restart `dsh web` after installing, then follow [Usage](#usage) to enable it.
 
 #### Update
+
 ```sh
 dsh plugin --profile web remove dsh-unrestricted
-dsh plugin --profile web add github:yexi-by/dsh-unrestricted#<new-version>
+dsh plugin --profile web add github:yexi-by/dsh-unrestricted#<version>
 ```
+
 Restart `dsh web`.
 
 #### Uninstall
+
 ```sh
 dsh plugin --profile web remove dsh-unrestricted
 ```
 
----
-
 ### Local Source Install
 
-For developers linking a local workspace:
+For local development:
 
 ```sh
-# Web profile
 dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
-
 ```
 
 ---
 
-## Usage (Double-Switch Activation)
+## Usage
 
-> **Important: Both switches must be turned on for unrestrict rules to take effect!**
->
-> 1. **Step 1 (Plugin Activation Switch)**: Navigate to **Plugins** in the sidebar. In the installed plugins list, find `dsh-unrestricted` (Unrestricted mode) and **toggle the plugin ON**. If the plugin is not enabled here, DSH will not load the plugin runtime at all.
-> 2. **Step 2 (Feature Toggle Switch)**: Click `dsh-unrestricted` in the **Plugins** page to open its configuration card, and turn on the **"Enable unrestricted mode"** switch at the top.
->
-> Both switches must be active for rules to be injected into the system prompt assembly pipeline.
+Make sure both switches are turned on after installation:
 
-### Settings Panel Features
+1. **Enable Plugin**: Open **Plugins** in the left sidebar, find `dsh-unrestricted`, and turn on the plugin switch.
+2. **Enable Rules**: Click `dsh-unrestricted` to open its settings card and turn on **"Enable unrestricted mode"**.
 
-- **Enable Switch**: Toggles unrestrict mode globally for future requests.
-- **Per-Mode Status**: Shows real-time injection status across Standard, PTC, Cordis, and Minimal modes (`Active` indicates successful anchor verification and injection; if inactive, check whether the plugin is toggled on in the Plugins manager).
-- **Rule Fingerprint**: Displays the SHA-256 hash (first 16 hex characters) of the deployed unrestrict rule block.
-- **Prompt Preview**: Click **"Show preview"** under any mode to inspect the exact system prompt text, line count, and byte size.
+The settings card also provides:
+
+- **Mode Status**: Shows anchor check and injection status for Standard, PTC, Cordis, and Minimal modes.
+- **Rule Fingerprint**: First 16 hex characters of the rule text's SHA-256 hash.
+- **Prompt Preview**: Expands the full assembled system prompt, line count, and byte size for each mode.
 
 ---
 
-## Operational Boundaries
+## Notes
 
-- **Cloud Platform Moderation Filters**: Commercial AI providers often enforce external content filters at the network layer. If a request triggers server-side keyword blocks, the connection is terminated by the API host (HTTP 400 or policy reset). Such external network-level filters cannot be bypassed by prompt engineering alone; pairing with relaxed API endpoints or local models (Ollama / vLLM) is advised.
-- **Host Security Enforcement**: The plugin modifies only the model's instruction following and reasoning depth. DSH's read-only file sandbox, terminal command approval prompts, and Plan Mode write restrictions remain fully enforced.
-- **Compliance**: Intended for authorized security research, reverse engineering, software development, and creative fiction.
+- **API Gateway Filtering**: System prompts adjust the model's own refusal behavior. If an upstream API gateway enforces external keyword blocking, requests may still be dropped or return HTTP 400 at the network layer.
+- **Host Permissions**: The plugin does not alter DSH's file sandbox, command approval prompts, or Plan Mode write protection.
 
 ---
 
@@ -175,19 +155,21 @@ dsh plugin --profile web add file:D:/work/dsh/plugin/unrestricted
 git clone https://github.com/yexi-by/dsh-unrestricted.git
 cd dsh-unrestricted
 pnpm install
+
 pnpm typecheck
 pnpm build
 pnpm test
 ```
 
-Repository maintenance tools:
-- `node tools/dump-prompts.mjs --repo <path> --out tests/fixtures`: Dumps stock prompts from DSH source to update test fixtures.
-- `node tools/verify-live.mjs --repo <path>`: Verifies live assembly and rollback without calling the LLM.
+Helper scripts:
+
+- `node tools/dump-prompts.mjs --repo <path> --out tests/fixtures`: Exports stock prompts from a DSH source checkout to update test fixtures.
+- `node tools/verify-live.mjs --repo <path>`: Verifies assembly and rollback across all four modes locally without calling model APIs.
 
 ---
 
 ## License & Credits
 
-- Initial prompt rules adapted and refined from [Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith)'s `gpt-unrestricted.md` (MIT License). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- This project has no affiliation with codex-keysmith or its author.
-- Licensed under the [MIT License](LICENSE).
+- Initial prompt rule structure adapted from [Jia-Ethan/codex-keysmith](https://github.com/Jia-Ethan/codex-keysmith) (MIT License). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Not affiliated with codex-keysmith or its author.
+- Released under the [MIT License](LICENSE).
