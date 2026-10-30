@@ -2,10 +2,10 @@
 
 ## 稳定入口与身份
 
-本仓库独立维护 `dsh-unrestricted`，当前插件版本为 **0.3.1**，已跟进 upstream **master** / [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839)。功能基线仍为 upstream **v0.2.4** / `7beb2d2546599723f3b2958705d1da3b0bbd5e70`。
+本仓库独立维护 `dsh-unrestricted`，当前插件版本为 **0.3.2**，已跟进 upstream **master** / [`fbd8475`](https://github.com/yexi-by/dsh-unrestricted/commit/fbd8475d01c7a705da34b7671b8ae9644770eedc)。功能基线仍为 upstream **v0.2.4** / `7beb2d2546599723f3b2958705d1da3b0bbd5e70`。
 
 - 稳定分支：[lilongsky/dsh-unrestricted · master](https://github.com/lilongsky/dsh-unrestricted/tree/master)。
-- 固定源码：[v0.3.1](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.1)。
+- 固定源码：[v0.3.2](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.2)。
 - 包名：`dsh-unrestricted`；配置 ID / Settings namespace：`unrestricted`。
 - 桌面和 Web 状态通道：`/api/dsh-unrestricted/{status,recheck,preview}`。
 
@@ -21,12 +21,15 @@
 
 0.3.1 合并上游的 [`e64a442`](https://github.com/yexi-by/dsh-unrestricted/commit/e64a44212739a3ab5c6e1119c8b84b774e6a2b1c)（rc.3 兼容性说明）和 `ab63f68`（macOS 桌面安装示例）。两个提交只修改 README；本 fork 同步三语安装、升级、卸载和非默认应用路径说明，并将三语兼容性说明统一到本轮实际验证的 rc.3。保留同名包更新和空闲窗口流程，运行源码、客户端构建产物、模块正文、SDK 依赖及声明范围均不变。
 
+0.3.2 合并上游 0.2.5 及其后续文档整理（`fbd8475`）。本 fork 同步技术文档简化；上游限定 0.2.2-alpha.2 的宿主范围、删除旧 scope fallback、缩窄 Plan 锚点和移除旧版恢复工具的变更不适用于本 fork 的兼容承诺，因此保留现有实现。十个模块、桌面公开 API、原有宿主范围及作者正文均不变。本轮隔离目标为实际 macOS Desktop 自带的 DSH `0.2.1-rc.5`，不据此宣称已支持 0.2.2-alpha.2。
+
 旧的[上游 0.2.3 比较记录](./upstream-0.2.3-review.md)保留当时的查询与整改过程，其中 PR 状态和最新版本描述只属于该日期。
 
 ## 验证记录
 
 | 版本 / 范围 | 已有证据 | 边界 |
 | --- | --- | --- |
+| `0.3.2` / 2026-10-30 | 合并 upstream `fbd8475`；73 项单测、类型、构建与实际 rc.5 的 220 项原生隔离检查通过 | 保留旧宿主兼容和所有模块；不宣称已适配 0.2.2-alpha.2；隔离检查无外部模型请求 |
 | `0.3.1` / 2026-10-26，上游同步 | 合并 upstream `ab63f68`；保留上游提交、fork 分支历史及原有功能 | 上游仅文档变化，没有新增功能修复 |
 | `0.3.1` / 单测、类型与构建 | 73 项单测通过；类型检查、客户端构建通过 | 使用原有开发依赖，未扩大兼容范围 |
 | `0.3.1` / rc.3 原生隔离回归 | 220 项通过：198 项主回归、18 项无预设注册表检查、4 项启动启用检查 | 实际 macOS Desktop 自带的 DSH `0.2.1-rc.3` SDK / Electron Node；每轮使用全新临时 `DSH_HOME`，无模型请求，未操作正式 profile 或 Desktop UI |

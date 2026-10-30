@@ -2,15 +2,15 @@
 
 [简体中文](./README.md) | [English](./README.en.md) | **日本語**
 
-[upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4) を基にした独立保守版です。プラグインのバージョンは **0.3.1**。作者の単一プロンプト本文を保ち、10 個の機能スイッチ、グループボタン、選択した本文の指紋、Desktop 用の公開 API 連携を保守します。
+[upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4) を基にした独立保守版です。プラグインのバージョンは **0.3.2**。作者の単一プロンプト本文を保ち、10 個の機能スイッチ、グループボタン、選択した本文の指紋、Desktop 用の公開 API 連携を保守します。
 
-安定版の入口は [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)、固定版は [v0.3.1](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.1) です。これはプラグインの版であり、DSH 本体の版ではありません。
+安定版の入口は [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)、固定版は [v0.3.2](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.2) です。これはプラグインの版であり、DSH 本体の版ではありません。
 
 ## 保守方針
 
 上流は単一の本文と全体スイッチを中心とする軽量な構成です。本 fork は、その基盤の上で機能別の選択と Desktop 連携を保守します。[PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) は終了しており、今後のリリースはこのリポジトリで独立して行い、必要な上流修正を引き続き取り込みます。
 
-0.3.1 は上流の [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839) まで追従し、DSH `0.2.1-rc.3` の互換性説明と macOS Desktop の導入手順を取り込みます。upstream 0.2.4 の機能修正は 0.3.0 で統合済みで、今回は本文と実行ロジックを変更しません。[保守説明](./docs/MAINTENANCE.md) と [変更履歴](./CHANGELOG.md) を参照してください。
+0.3.2 は上流の [`fbd8475`](https://github.com/yexi-by/dsh-unrestricted/commit/fbd8475d01c7a705da34b7671b8ae9644770eedc) まで統合し、DSH `0.2.1-rc.5` を検証します。上流 0.2.5 は 0.2.2-alpha.2 に移行していますが、本 fork は既存ホストの互換層、10 個のモジュールと Desktop API を保ち、適用できる技術文書の整理を取り込みます。作者の本文は変更しません。[保守説明](./docs/MAINTENANCE.md) と [変更履歴](./CHANGELOG.md) を参照してください。
 
 ## 機能
 
@@ -31,10 +31,10 @@
 ### Web profile
 
 ```sh
-dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
-安定ブランチに追従する場合は `#v0.3.1` を `#master` に変更します。
+安定ブランチに追従する場合は `#v0.3.2` を `#master` に変更します。
 
 ### Desktop profile
 
@@ -42,14 +42,14 @@ dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-s
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 Windows の標準インストール先の例：
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" `
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 Desktop は Windows と macOS に対応します。別の場所にインストールした場合はアプリのパスを置き換えてください。更新時も同じ `add` コマンドを使い、稼働中のホストの手順に従ってアイドル時間帯を確認します。
@@ -69,7 +69,7 @@ Desktop は Windows と macOS に対応します。別の場所にインスト�
 ### ローカルビルド
 
 ```sh
-git clone --branch v0.3.1 https://github.com/lilongsky/dsh-unrestricted.git
+git clone --branch v0.3.2 https://github.com/lilongsky/dsh-unrestricted.git
 cd dsh-unrestricted
 npm ci --ignore-scripts
 npm test
@@ -81,7 +81,7 @@ npm pack
 作成したパッケージを確認した後、目的の profile の CLI で同名の tarball を導入できます。
 
 ```sh
-dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.2.tgz" --ignore-scripts
 ```
 
 ## 使い方
@@ -94,9 +94,9 @@ dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestric
 
 ## 検証範囲
 
-`package.json` の宣言範囲は `>=0.2.0-rc.2 <0.2.2-0` です。開発依存は従来どおりとし、今回のネイティブ隔離検証は実際の macOS Desktop 付属の DSH `0.2.1-rc.3` を対象とします。実施状況は[保守説明](./docs/MAINTENANCE.md#验证记录)に記録します。
+`package.json` の宣言範囲は `>=0.2.0-rc.2 <0.2.2-0` です。開発依存は従来どおりとし、今回のネイティブ隔離検証は実際の macOS Desktop 付属の DSH `0.2.1-rc.5` を対象とします。実施状況は[保守説明](./docs/MAINTENANCE.md#验证记录)に記録します。
 
-`0.2.3-modular.2` には、2026-10-18 の隔離ホスト検証と macOS Desktop の状態表示、4 モードの静的プレビュー、再確認の受け入れ記録があります。これは旧版の履歴であり、0.3.1 の実機受け入れ結果としては扱いません。回答品質、拒否率、課金 token、4 モードすべてのオンライン実行には、それぞれ実際の要求による検証が必要です。
+`0.2.3-modular.2` には、2026-10-18 の隔離ホスト検証と macOS Desktop の状態表示、4 モードの静的プレビュー、再確認の受け入れ記録があります。これは旧版の履歴であり、0.3.2 の実機受け入れ結果としては扱いません。回答品質、拒否率、課金 token、4 モードすべてのオンライン実行には、それぞれ実際の要求による検証が必要です。
 
 ## ライセンスと謝辞
 

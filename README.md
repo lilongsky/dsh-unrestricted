@@ -2,15 +2,15 @@
 
 **简体中文** | [English](./README.en.md) | [日本語](./README.ja.md)
 
-本 fork 基于 [upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4)，独立版本为 **0.3.1**。保留作者单份提示词正文，维护十个功能模块、快捷启用按钮、所选正文指纹和桌面公共 API 适配。
+本 fork 基于 [upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4)，独立版本为 **0.3.2**。保留作者单份提示词正文，维护十个功能模块、快捷启用按钮、所选正文指纹和桌面公共 API 适配。
 
-稳定入口：[master](https://github.com/lilongsky/dsh-unrestricted/tree/master)；固定版本：[v0.3.1](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.1)。这是插件版本，不是 DSH 宿主版本。
+稳定入口：[master](https://github.com/lilongsky/dsh-unrestricted/tree/master)；固定版本：[v0.3.2](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.2)。这是插件版本，不是 DSH 宿主版本。
 
 ## 维护范围
 
 上游以单份正文和整体启停为主要路线；本 fork 在此基础上维护按功能选择和桌面集成。[PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) 已关闭，后续版本在本仓库独立维护，同时继续评估并整合上游修复。
 
-0.3.1 跟进上游至 [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839)，同步 DSH `0.2.1-rc.3` 兼容性说明和 macOS 桌面安装文档。此前 0.3.0 已整合 upstream 0.2.4 的功能修复；本次不改提示词和运行逻辑。取舍和验证范围见 [维护说明](./docs/MAINTENANCE.md) 与 [更新记录](./CHANGELOG.md)。
+0.3.2 已合并上游至 [`fbd8475`](https://github.com/yexi-by/dsh-unrestricted/commit/fbd8475d01c7a705da34b7671b8ae9644770eedc)，并验证 DSH `0.2.1-rc.5`。上游 0.2.5 转向 0.2.2-alpha.2；本 fork 保留原有宿主兼容层、十个模块和桌面 API，同步适用的技术文档整理。作者正文不变。取舍和验证范围见 [维护说明](./docs/MAINTENANCE.md) 与 [更新记录](./CHANGELOG.md)。
 
 ## 功能
 
@@ -31,10 +31,10 @@
 ### Web profile
 
 ```sh
-dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
-需要跟随稳定分支时，将 `#v0.3.1` 改为 `#master`。
+需要跟随稳定分支时，将 `#v0.3.2` 改为 `#master`。
 
 ### Desktop profile
 
@@ -42,14 +42,14 @@ dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-s
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 Windows 默认安装路径示例：
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" `
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 桌面端支持 Windows 与 macOS。如果应用安装在其他位置，请替换命令中的应用路径。升级同名插件使用上述 `add` 命令，并先按安全热更新流程确认空闲窗口。
@@ -69,7 +69,7 @@ Windows 默认安装路径示例：
 ### 本地构建
 
 ```sh
-git clone --branch v0.3.1 https://github.com/lilongsky/dsh-unrestricted.git
+git clone --branch v0.3.2 https://github.com/lilongsky/dsh-unrestricted.git
 cd dsh-unrestricted
 npm ci --ignore-scripts
 npm test
@@ -81,7 +81,7 @@ npm pack
 审阅构建出的包后，可使用对应 profile 的 CLI 安装同名本地 tarball：
 
 ```sh
-dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.2.tgz" --ignore-scripts
 ```
 
 ## 使用
@@ -94,9 +94,9 @@ dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestric
 
 ## 验证范围
 
-声明的宿主范围以 `package.json` 的 `engines.dsh` 为准：`>=0.2.0-rc.2 <0.2.2-0`。构建保持原有开发依赖，本轮原生隔离验证目标为实际 macOS Desktop 自带的 DSH `0.2.1-rc.3`；具体完成状态记录在[维护说明](./docs/MAINTENANCE.md#验证记录)。
+声明的宿主范围以 `package.json` 的 `engines.dsh` 为准：`>=0.2.0-rc.2 <0.2.2-0`。构建保持原有开发依赖，本轮原生隔离验证目标为实际 macOS Desktop 自带的 DSH `0.2.1-rc.5`；具体完成状态记录在[维护说明](./docs/MAINTENANCE.md#验证记录)。
 
-2026-10-18 的 `0.2.3-modular.2` 已有隔离宿主和 macOS Desktop 状态、四模式静态预览、重新校验验收记录。它们是旧版本的历史证据，不作为 0.3.1 的本轮实机验收。模型回答质量、拒答率、计费 token 和四模式在线运行需要各自的实际请求证据。
+2026-10-18 的 `0.2.3-modular.2` 已有隔离宿主和 macOS Desktop 状态、四模式静态预览、重新校验验收记录。它们是旧版本的历史证据，不作为 0.3.2 的本轮实机验收。模型回答质量、拒答率、计费 token 和四模式在线运行需要各自的实际请求证据。
 
 ## 协议与致谢
 

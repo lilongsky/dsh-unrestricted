@@ -1,6 +1,6 @@
 # 功能模块
 
-本 fork 的独立版本为 **0.3.1**，基于 upstream **v0.2.4**，已跟进文档更新至 [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839)。稳定入口为 [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)，固定 tag 为 [v0.3.1](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.1)。
+本 fork 的独立版本为 **0.3.2**，已合并上游至 [`fbd8475`](https://github.com/yexi-by/dsh-unrestricted/commit/fbd8475d01c7a705da34b7671b8ae9644770eedc)，保留 DSH 0.2.1 系列兼容及模块功能。稳定入口为 [master](https://github.com/lilongsky/dsh-unrestricted/tree/master)，固定 tag 为 [v0.3.2](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.2)。
 
 作者单份原始正文保持不变；界面提供中文和英文，不提供另一套提示词语言选择。包名 `dsh-unrestricted`、配置 ID 与 Settings namespace `unrestricted` 保持不变，旧模块字段继续读取。
 
@@ -63,7 +63,7 @@ npm run typecheck
 npm run build
 ```
 
-开发 SDK 依赖保持原有版本。本轮 0.3.1 使用实际 DSH `0.2.1-rc.3` 进行隔离验证，结果记录于[维护说明](./docs/MAINTENANCE.md#验证记录)；旧版 `0.2.3-modular.2` 的原生与 Desktop 验收属于历史记录。
+开发 SDK 依赖保持原有版本。本轮 0.3.2 使用实际 DSH `0.2.1-rc.5` 进行隔离验证，结果记录于[维护说明](./docs/MAINTENANCE.md#验证记录)；旧版 `0.2.3-modular.2` 的原生与 Desktop 验收属于历史记录。
 
 `tools/verify-installed.mjs` 使用临时 profile 组装提示词及调用认证 API；`tools/verify-rosterless.mjs` 验证无预设注册表的原生组合。按其参数选择隔离运行目录，不指向正在使用的正式 profile。
 

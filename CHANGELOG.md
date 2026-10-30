@@ -2,6 +2,16 @@
 
 本 fork 独立编号；包名 `dsh-unrestricted`、配置 ID / Settings namespace `unrestricted` 保持不变。
 
+## 0.3.2 — 2026-10-30
+
+合并 upstream `master` 至 `fbd8475`（包含 0.2.5），保留本 fork 对 DSH 0.2.1 系列的兼容和自有功能。
+
+- 同步上游技术文档整理；上游转向 0.2.2-alpha.2 的兼容收缩不覆盖本 fork 的声明、scope fallback、Plan 锚点和旧版恢复资料。
+- 十个功能模块、所选正文指纹、配置快照与桌面公开 API 保持不变，作者正文未修改。
+- 实际 DSH `0.2.1-rc.5` 的 220 项原生隔离检查、73 项单测、类型检查和构建通过。无外部模型请求。
+
+正式 profile 热更新和隔离验证分别记录，见[维护说明](./docs/MAINTENANCE.md)。
+
 ## 0.3.1 — 2026-10-26
 
 跟进 upstream `master` 至 [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839)，稳定入口为本 fork 的 `master` / `v0.3.1`。

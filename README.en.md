@@ -2,15 +2,15 @@
 
 [简体中文](./README.md) | **English** | [日本語](./README.ja.md)
 
-This fork is based on [upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4), with the independent plugin version **0.3.1**. It retains the author's single prompt body and maintains ten functional switches, group buttons, selected-body fingerprints, and the public API integration used by the Desktop card.
+This fork is based on [upstream v0.2.4](https://github.com/yexi-by/dsh-unrestricted/tree/v0.2.4), with the independent plugin version **0.3.2**. It retains the author's single prompt body and maintains ten functional switches, group buttons, selected-body fingerprints, and the public API integration used by the Desktop card.
 
-Stable entry: [master](https://github.com/lilongsky/dsh-unrestricted/tree/master). Pinned version: [v0.3.1](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.1). This is the plugin version, not a DSH host version.
+Stable entry: [master](https://github.com/lilongsky/dsh-unrestricted/tree/master). Pinned version: [v0.3.2](https://github.com/lilongsky/dsh-unrestricted/tree/v0.3.2). This is the plugin version, not a DSH host version.
 
 ## Maintenance scope
 
 Upstream focuses on one prompt body and its overall toggle. This fork maintains functional selection and Desktop integration on that foundation. [PR #6](https://github.com/yexi-by/dsh-unrestricted/pull/6) is closed; releases continue independently here while relevant upstream fixes are reviewed and integrated.
 
-Version 0.3.1 follows upstream through [`ab63f68`](https://github.com/yexi-by/dsh-unrestricted/commit/ab63f682d81d7e2312742344fececa9d1a039839), incorporating the DSH `0.2.1-rc.3` compatibility notes and macOS Desktop installation documentation. Version 0.3.0 already integrated upstream 0.2.4's functional fixes; this update leaves prompt bodies and runtime behavior unchanged. See [maintenance notes](./docs/MAINTENANCE.md) and the [changelog](./CHANGELOG.md).
+Version 0.3.2 merges upstream through [`fbd8475`](https://github.com/yexi-by/dsh-unrestricted/commit/fbd8475d01c7a705da34b7671b8ae9644770eedc) and validates DSH `0.2.1-rc.5`. Upstream 0.2.5 moves to 0.2.2-alpha.2; this fork retains its existing host compatibility, ten modules, and Desktop API while incorporating applicable technical-document cleanup. The author prompt body is unchanged. See [maintenance notes](./docs/MAINTENANCE.md) and the [changelog](./CHANGELOG.md).
 
 ## Features
 
@@ -31,10 +31,10 @@ The examples below use a pinned tag. Updating an active profile requires a confi
 ### Web profile
 
 ```sh
-dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+dsh plugin --profile web add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
-Use `#master` instead of `#v0.3.1` to follow the stable branch.
+Use `#master` instead of `#v0.3.2` to follow the stable branch.
 
 ### Desktop profile
 
@@ -42,14 +42,14 @@ Use the CLI shipped with the corresponding Desktop App and select the `desktop` 
 
 ```sh
 "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" \
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 Example for the default Windows location:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" `
-  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.1 --ignore-scripts
+  plugin --profile desktop add github:lilongsky/dsh-unrestricted#v0.3.2 --ignore-scripts
 ```
 
 Desktop supports Windows and macOS. If the app is installed elsewhere, replace the application path. Use the same `add` command to update the package after confirming an idle window with the running-host procedure.
@@ -69,7 +69,7 @@ This release-build validation record covers isolated checks. Production-profile 
 ### Local build
 
 ```sh
-git clone --branch v0.3.1 https://github.com/lilongsky/dsh-unrestricted.git
+git clone --branch v0.3.2 https://github.com/lilongsky/dsh-unrestricted.git
 cd dsh-unrestricted
 npm ci --ignore-scripts
 npm test
@@ -81,7 +81,7 @@ npm pack
 After reviewing the package, install the same package name with the CLI for the intended profile:
 
 ```sh
-dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-unrestricted@file:/absolute/path/dsh-unrestricted-0.3.2.tgz" --ignore-scripts
 ```
 
 ## Usage
@@ -94,9 +94,9 @@ Disabled modules are omitted from subsequent prompt bodies. Turning off all modu
 
 ## Validation scope
 
-The declared host range in `package.json` is `>=0.2.0-rc.2 <0.2.2-0`. Development dependencies are unchanged; this cycle targets native isolated validation on DSH `0.2.1-rc.3` bundled with the actual macOS Desktop app. Completion is recorded in the [maintenance notes](./docs/MAINTENANCE.md#验证记录).
+The declared host range in `package.json` is `>=0.2.0-rc.2 <0.2.2-0`. Development dependencies are unchanged; this cycle targets native isolated validation on DSH `0.2.1-rc.5` bundled with the actual macOS Desktop app. Completion is recorded in the [maintenance notes](./docs/MAINTENANCE.md#验证记录).
 
-Version `0.2.3-modular.2` has historical isolated-host and macOS Desktop status, four static-preset-preview, and recheck acceptance records from 2026-10-18. Those records belong to the old version and do not establish live acceptance of 0.3.1. Answer quality, refusal rates, billing tokens, and online execution in all four modes require their own request evidence.
+Version `0.2.3-modular.2` has historical isolated-host and macOS Desktop status, four static-preset-preview, and recheck acceptance records from 2026-10-18. Those records belong to the old version and do not establish live acceptance of 0.3.2. Answer quality, refusal rates, billing tokens, and online execution in all four modes require their own request evidence.
 
 ## License and credits
 
